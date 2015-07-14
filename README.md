@@ -1,5 +1,7 @@
 # opal-console
-Execute/transpile ruby code from the command line using Opal in JavaScriptCore
+Library to 'embed' ruby in to Vala programs via JavaScriptCore and Opal
+
+Provides an executable to Execute/transpile ruby code from the command line using Opal in JavaScriptCore  
 
 Usage
 ===
