@@ -5,7 +5,7 @@ void usage(string? msg = null) {
 		print("%s\n\n", msg);
 	}
 	
-	print("Usage:\n\n\t# ovala [options] [path|arg] [arg1, ...]\n\nOptions:\n-e\n-w\n-c\n-v\n-h\n\n");
+	print("Usage:\n\n\t# opala [options] [path|arg] [arg1, ...]\n\nOptions:\n-e\n-w\n-c\n-v\n-h\n\n");
 }
 
 void main(string[] argv) {
