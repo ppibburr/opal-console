@@ -1,4 +1,5 @@
-namespace JS {
+namespace Opal{
+namespace JSUtils {
 	public class Value {
 		private weak JSCore.Context _context;
 		private weak JSCore.Value? _native;
@@ -46,8 +47,16 @@ namespace JS {
 		}
 		
 		public Value exec(string code) {
+			var e = new JSCore.Value.null(this);
 			var js = new JSCore.String.with_utf8_c_string(code);
-			return new Value(this, ((JSCore.Context)this).evaluate_script(js, null, null, 0, null));
+			var result = new Value(this, ((JSCore.Context)this).evaluate_script(js, null, null, 0, out e));
+
+            if (e != null) {
+				if (!e.is_null(this)) {
+					print("ERROR: %s\n",read_string(e));
+                }
+            }
+			return result;
 		}
 		
 		private void init_console() {
@@ -66,7 +75,7 @@ namespace JS {
 						JSCore.PropertyAttribute.ReadOnly,
 						null);
 						
-		  print("console: Ready.\n");
+		  //print("console: Ready.\n");
 		}
 		
 		public static string _read_string(JSCore.Context ctx, JSCore.Value val) {
@@ -81,4 +90,4 @@ namespace JS {
 		  return  _read_string(this, val);	
 		}	
 	}
-}
+}}
