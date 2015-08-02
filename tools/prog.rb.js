@@ -78,7 +78,7 @@ if (e == null) e = nil;
   })(self);
   $scope.get('ARGV').$shift();
   Opal.cdecl($scope, 'VERSION', "0.1.0");
-  Opal.cdecl($scope, 'OPTIONS', $hash2(["e", "v", "h", "w", "c"], {"e": "Execute inline script", "v": "Print version", "h": "Print this message", "w": "Execute in headless WebKit", "c": "Transpile ruby source to JS"}));
+  Opal.cdecl($scope, 'OPTIONS', $hash2(["e", "v", "h", "w", "c", "j", "s"], {"e": "Execute inline ruby script", "v": "Print version", "h": "Print this message", "w": "run in headless WebKit", "c": "Transpile ruby source to JS", "j": "Execute inline js", "s": "include stdlib"}));
   Opal.Object.$$proto.$usage = function(msg) {
     var $a, $b, TMP_2, self = this;
 
@@ -95,7 +95,7 @@ if (k == null) k = nil;if (v == null) v = nil;
     return self.$print($rb_plus((("-") + (k)).$ljust(10), "" + (v) + "\n"))}, TMP_2.$$s = self, TMP_2), $a).call($b);
   };
   try {
-  opts = (($scope.get('Getopt')).$$scope.get('Std')).$getopts("vhwce");
+  opts = (($scope.get('Getopt')).$$scope.get('Std')).$getopts("vhwcejs");
     $gvars["0"] = "(file)";
     if ((($a = ((($b = opts['$[]']("v")) !== false && $b !== nil) ? $b : opts['$[]']("h"))) !== nil && (!$a.$$is_boolean || $a == true))) {
       if ((($a = opts['$[]']("v")) !== nil && (!$a.$$is_boolean || $a == true))) {
@@ -116,6 +116,9 @@ if (k == null) k = nil;if (v == null) v = nil;
       parser = true;
       if ((($a = opts['$[]']("e")) !== nil && (!$a.$$is_boolean || $a == true))) {
         code = $scope.get('ARGV').$last()
+      } else if ((($a = opts['$[]']("j")) !== nil && (!$a.$$is_boolean || $a == true))) {
+        code = $scope.get('ARGV').$last();
+        parser = false;
         } else {
         $gvars["0"] = $scope.get('ARGV').$shift();
         code = self.$read($gvars["0"]);
@@ -125,7 +128,7 @@ if (a == null) a = nil;
         if ((($a = $gvars["0"].$split(".").$last()['$==']("rb")['$!']()) !== nil && (!$a.$$is_boolean || $a == true))) {
           parser = false};
       };
-      return run(code, opts['$[]']("w")['$!']()['$!'](), parser, $gvars["0"]);;
+      return run(code, opts['$[]']("w")['$!']()['$!'](), parser, $gvars["0"], opts['$[]']("s")['$=='](nil)['$!']());;
     };
   } catch ($err) {if (true) {e = $err;
     return self.$usage(e)

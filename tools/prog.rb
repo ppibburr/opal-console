@@ -112,11 +112,13 @@ ARGV.shift;
 VERSION = "0.1.0"
 
 OPTIONS = {
-  e: "Execute inline script",
+  e: "Execute inline ruby script",
   v: "Print version",
   h: "Print this message",
-  w: "Execute in headless WebKit",
-  c: "Transpile ruby source to JS"
+  w: "run in headless WebKit",
+  c: "Transpile ruby source to JS",
+  j: "Execute inline js",
+  s: "include stdlib"
 }
 
 
@@ -135,7 +137,7 @@ def usage(msg="");
 end;
 
 begin
-  opts = Getopt::Std.getopts("vhwce")
+  opts = Getopt::Std.getopts("vhwcejs")
 
   $0 = "(file)"
   
@@ -155,6 +157,9 @@ begin
       parser = true
       if opts['e']
         code = ARGV.last
+      elsif opts['j']
+        code = ARGV.last
+        parser = false
       else
         $0 = ARGV.shift
         code = read($0)
@@ -170,7 +175,7 @@ begin
       
       # puts "run(#{code}, #{!!opts['w']}, #{parser}, #{$0});"
       
-      `run(#{code}, #{!!opts['w']}, #{parser}, #{$0});`
+      `run(#{code}, #{!!opts['w']}, #{parser}, #{$0}, #{opts['s']!=nil});`
     end
   else
     if opts['v']
