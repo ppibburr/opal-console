@@ -112,34 +112,124 @@ namespace Opal {
 			}
 		}
 		
+		
+		public static GLib.Value? carg2gval(string type, void* val) {
+			GLib.Value? v;
+			switch (type) {
+			case "string":
+				v = (string)val;
+				break;
+			case "pointer":
+			    Opal.debug("carg2gval: pointer");
+				void *p = *(void**)val;
+				v = (int)p;
+				break;
+			case "int32":
+			    v = *(int*)val;
+			    break;
+			default:
+				v = null;
+				break;
+			}		
+			
+			return v;	
+		}
+		
+		
 		// The 'data' passed to closure binding
 		public class Data : GLib.Object {
 			public weak JSCore.Context c; 
 			public weak JSCore.Object? self; 
 			public weak JSCore.Object func;
-			public Data(JSCore.Context c, JSCore.Object? self, JSCore.Object func) {
+			public CallbackInfo? info = null;
+			public FFIPointerBinder? pointer_binder;
+			public Data(JSCore.Context c, FFIPointerBinder? pointer_binder, JSCore.Object? self, JSCore.Object func, CallbackInfo? cb = null) {
 				this.c = c;
 				this.self = self;
 				this.func = func;
+				this.info = cb;
+				this.pointer_binder = pointer_binder;
 			}
 			
 			public GLib.Value? call(void*[] args) {
-				void *p = *(void**)args[0];
-								
-				var no = c.evaluate_script(new JSCore.String.with_utf8_c_string("new FFIPointer();"),self,null,0,null);
-				GLib.Value? v = (int)p;
-				((JSUtils.Object)no).set_prop(c, "address", v);
+				// void *p = *(void**)args[0];
 				
-				GLib.Value?[] jargs = new GLib.Value?[1];
-				jargs[0] = jval2gval(c, no, null);				
+				Opal.debug("Data#call: 001");			
+							
+				if (info == null) {
+				    JSUtils.call(c, self, func, null);			
+				    return null;
+				}
 				
-				JSUtils.call(c, self, func, jargs);			
+				GLib.Value?[] vary = new GLib.Value?[args.length];
+				
+				Opal.debug("Data#call: 002");
+				
+				for (int i = 0; i<args.length; i++) {
+					var q = carg2gval(info.args_types[i], args[i]);
+					
+					if (q == null) {
+						Opal.debug("Data#call: NULL POINTER ARG");
+					}
+					
+					if (info.args_types[i] == "pointer") {
+						Opal.debug("Data#call: 003 make pointer jval %s".printf(value_type(q).to_string()));
+						var obj = new JSCore.Object(c, pointer_binder.js_class, null);
+						Opal.debug("Data#call: 004 set address");
+						((JSUtils.Object)obj).set_prop(c, "address", q);
+						q = obj;	
+					}
+					
+					vary[i] = q;
+				}
+				
+				Opal.debug("Data#call: 005 call jfunc");
+				
+				var res = JSUtils.call(c, self, func, vary);
 
+				Opal.debug("Data#call: 006");
+
+				return res;
+				
+			}
+		}
+		
+		
+		
+		public class CallbackInfo {
+			public string rtype;
+			public string[] args_types;
+			public string name;
+			
+			public static Gee.HashMap<string,CallbackInfo> callbacks;
+			
+			public CallbackInfo (string name, string rtype, string[] args_types) {
+				this.name = name;
+				this.rtype = rtype;
+				this.args_types = args_types;
+				callbacks[name] = this;
+			}
+			
+			static construct {
+				callbacks = new Gee.HashMap<string, CallbackInfo>();
+			}
+			
+			public static bool is_registered(string name) {
+				if (name in callbacks) {
+					return true;
+				}
+				
+				return false;
+			}
+			
+			public static CallbackInfo? get_callback(string name) {
+				if (is_registered(name)) {
+					return callbacks[name];
+				}
 				
 				return null;
 			}
 		}
-		
 		
 		public class FFIFuncBinderKlass : Opal.JSUtils.Binder {
 			public FFIFuncBinderKlass() {
@@ -150,6 +240,22 @@ namespace Opal {
 					return FFIFuncBinder.init_object(null, jsary2vary(c,(JSCore.Object)gval2jval(c,args[1])), c, out e);
 					
 				});		
+				
+				bind("register_callback", (self, args, c, out e) => {
+					string name = (string)args[0];
+					string rtype = (string)args[1];
+					string[] args_types = new string[0];
+					
+					var vary = jsary2vary(c, (JSCore.Object)args[2]);
+					
+					foreach(var v in vary) {
+						args_types += (string)v;
+					}
+					
+					new CallbackInfo(name, rtype, args_types);
+					
+					return true; 
+				});
 				
 				close();
 			}
@@ -190,6 +296,9 @@ namespace Opal {
 				case "int32":
 					r = FFI.sint32;
 					break;	
+			    case "bool":
+			        r = FFI.sint8;
+			        break;
 				case "pointer":
 					r = FFI.pointer;
 					break;	  
@@ -202,25 +311,34 @@ namespace Opal {
 				}
 				
 				for (var i = 0; i < atypes.length; i++) {
-					switch ((string)atypes[i]) {
-					case "string":
+					if (CallbackInfo.is_registered((string)atypes[i])) {
+					    Opal.debug("Have Callback as argtype");
+					
 						a[i] = FFI.pointer;
-						break;
+					} else {
+					
+						switch ((string)atypes[i]) {
+						case "string":
+							a[i] = FFI.pointer;
+							break;
+							
+						case "pointer":
+							a[i] = FFI.pointer;
+							break;				
 						
-					case "pointer":
-						a[i] = FFI.pointer;
-						break;				
-					
-					case "int32":
-						a[i] = FFI.sint32;
-						break;
-					
-					default:
-						Opal.debug("INVOKE: 001");
-						raise(c, "Bad Type for arg_types[%d].".printf(i), out e);
-						return null;
+						case "int32":
+							a[i] = FFI.sint32;
+							break;
+						
+						default:
+							Opal.debug("INVOKE: 001");
+							raise(c, "Bad Type for arg_types[%d].".printf(i), out e);
+							return null;
+						}
 					}
 				}
+			
+			    Opal.debug("Prep cif");
 			
 				FFI.call_interface.prepare(out cif, FFI.ABI.DEFAULT, r, a);
 				
@@ -229,61 +347,98 @@ namespace Opal {
 				int?[] int_args    = new int?[0];
 				void*[] ptr_args   = new void*[0];
 				
-				Opal.debug_state = true;
+				//Opal.debug_state = true;
 				
 				for (var i=0; i < args.length; i++) {
-					switch ((string)atypes[i]) {
-					case "string":
-						str_args += (string?)args[i];
-						pargs[i] = &str_args[str_args.length-1];
-						Opal.debug("INVOKE: 802");
-						break;
-					
-					case "pointer":
-					    if (value_type(args[i]) == ValueType.OBJECT && ObjectType.from_object(c, (JSCore.Object)args[i]) == ObjectType.FUNCTION) {
-							/* Acts like puts with the file given at time of enclosure. */
-	
-			             
-							Opal.debug("CLOSURE: 001");
-							ptr_args += new FFIClosure(3, new Data(default_context ?? c, self, (JSCore.Object)args[i]), (args, data) => {								
-								((Data)data).call(args);
-								return (void*)true;
-							}).closure;
-
-							pargs[i] = &ptr_args[ptr_args.length-1];
+					if (CallbackInfo.is_registered((string)atypes[i])) {
+						if (value_type(args[i]) != ValueType.OBJECT || ObjectType.from_object(c, (JSCore.Object)args[i]) != ObjectType.FUNCTION) {
+							raise(c, "Expect Proc/Function as argument %d".printf(i), out e);
+							return null;
+						}
+						
+						Opal.debug("Create with CallbackInfo: %s".printf((string)atypes[i]));
+						
+						var cb = CallbackInfo.get_callback((string)atypes[i]);
+						
+						ptr_args += new FFIClosure(cb.args_types.length, new Data(default_context ?? c, pointer_binder , self, (JSCore.Object)args[i], cb), (args, data) => {								
+							var ret = ((Data)data).call(args);
 							
+							Opal.debug("ClosureCallback: 001 - %s".printf(((Data)data).info.rtype));
+							
+							switch (((Data)data).info.rtype) {
+							case "pointer":
+							  return (void*)((int)(double)((JSUtils.Object)ret).get_prop(((Data)data).c, "address")).to_pointer();
+							case "string":
+							  return (void*)(string)ret;
+							case "int32":
+							  return (void*)(int)(double)ret;
+							case "bool":
+							  Opal.debug("ClosureCallback: 002 return bool");
+							  return (void*)(bool)ret;
+							}
+							
+							return null;
+							
+						}).closure;
+
+						pargs[i] = &ptr_args[ptr_args.length-1];
+					
+					} else {
+						switch ((string)atypes[i]) {
+						case "string":
+							str_args += (string?)args[i];
+							pargs[i] = &str_args[str_args.length-1];
+							Opal.debug("INVOKE: 802");
 							break;
-						}
 						
+						case "pointer":
+							if (value_type(args[i]) == ValueType.OBJECT && ObjectType.from_object(c, (JSCore.Object)args[i]) == ObjectType.FUNCTION) {
+								// does not process return, args types
+								// 
+								// returns null; 
+								
+								Opal.debug("CLOSURE: 001");
+								
+								ptr_args += new FFIClosure(0, new Data(default_context ?? c, pointer_binder, self, (JSCore.Object)args[i]), (args, data) => {								
+									((Data)data).call(args);
+									return (void*)null;
+								}).closure;
+
+								pargs[i] = &ptr_args[ptr_args.length-1];
+								
+								break;
+							}
+							
+							
 						
-					
-						if (args[i] == null) {
-							ptr_args += ((int)0).to_pointer();
-							pargs[i] = &ptr_args[ptr_args.length-1];
-							Opal.debug("FUCK");
+							if (args[i] == null) {
+								ptr_args += ((int)0).to_pointer();
+								pargs[i] = &ptr_args[ptr_args.length-1];
+								Opal.debug("FUCK");
+								break;
+							}
+						
+							var ptr = ((JSUtils.Object)args[i]).get_prop(c, "address");
+							if (ptr != null) {
+								ptr_args += ((int)(double)ptr).to_pointer();
+								pargs[i] = &ptr_args[ptr_args.length-1];
+							} else {
+								Opal.debug("FUCK:");
+								ptr_args += ((int)0).to_pointer();
+								pargs[i] = &ptr_args[ptr_args.length-1];
+							}
+							break;			
+						
+						case "int32":
+							int_args += (int)(double)args[i];
+							pargs[i] = (void*)int_args[int_args.length-1];
 							break;
-						}
-					
-						var ptr = ((JSUtils.Object)args[i]).get_prop(c, "address");
-						if (ptr != null) {
-							ptr_args += ((int)(double)ptr).to_pointer();
-							pargs[i] = &ptr_args[ptr_args.length-1];
-						} else {
-							Opal.debug("FUCK:");
-							ptr_args += ((int)0).to_pointer();
-							pargs[i] = &ptr_args[ptr_args.length-1];
-						}
-						break;			
-					
-					case "int32":
-						int_args += (int)(double)args[i];
-						pargs[i] = (void*)int_args[int_args.length-1];
-						break;
-					
-					 default:
-					   raise(c, "Bad type for parameter at args_types[%d]".printf(i), out e);
-					   return null;
-					}	
+						
+						 default:
+						   raise(c, "Bad type for parameter at args_types[%d]".printf(i), out e);
+						   return null;
+						}	
+					}
 				}		
 				
 				GLib.Value? result;
@@ -315,6 +470,15 @@ namespace Opal {
 
 					
 					return;			
+
+				case "bool":
+					bool i;
+					Opal.debug("CALL: bool");
+					cif.call<bool>(func, out i, args);
+					
+					
+					v = i;
+					return;	
 					
 				case "int32":
 					int i = 44;
@@ -328,7 +492,7 @@ namespace Opal {
 					
 				case "void":
 					void* o = null;
-					Opal.debug("CALL: 005");
+					Opal.debug("CALL: 005 - %d".printf(args.length));
 					cif.call<void*>(func, out o, args);
 					Opal.debug("CALL: 006");
 
@@ -341,7 +505,7 @@ namespace Opal {
 				} 
 			}
 			
-			public Binder? pointer_binder;	
+			public FFIPointerBinder? pointer_binder;	
 			public FFIFuncBinder() {
 				base("FFIFunc", new FFIFuncBinderKlass());
 				
@@ -356,7 +520,7 @@ namespace Opal {
 					string symbol = (string)ins.get_prop(c, "symbol");
 					string rtype  = (string)ins.get_prop(c, "return_type");
 					
-					Opal.debug("FUNC_INVOKE: 002");
+					Opal.debug("FUNC_INVOKE: 002 - %s".printf( symbol));
 					
 					GLib.Value?[] atypes = jsary2vary(c, (JSCore.Object)ins.get_prop(c, "args_types"));
 					
@@ -453,7 +617,7 @@ namespace Opal {
 			public static int? check_args(GLib.Value?[] args, ValueType?[] types) {
 				Opal.debug("CA 000");
 				int i = 0;
-				print("%d\n",args.length);
+				
 				foreach(var a in args) {
 					Opal.debug("CA 001 %d".printf(i));
 					if (value_type(a) != types[i]) {

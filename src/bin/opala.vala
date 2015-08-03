@@ -181,7 +181,7 @@ namespace Opala {
 				 bool val = (bool)args[0];
 				 
 				 Opal.debug_state = val;
-				 print("called\n");
+			
 				 Opal.debug("Opala.set_debug(%s)".printf(val ? "true" : "false"));
 				 return args[0]; 
 			  });
@@ -228,7 +228,7 @@ namespace Opala {
 					FileUtils.get_contents("opala-stdlib/file.rb.js", out code, null);
 					context.exec(code);
 				}
-				Opal.debug_state = true;
+				//Opal.debug_state = true;
 				var funcb = new Opal.JsFFI.FFIFuncBinder();
 				funcb.default_context = context;
 				
