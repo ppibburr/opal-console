@@ -6,10 +6,14 @@ namespace Opal {
 				public Binder.b_cb func;
 				public string name;
 				public int n_args = -1;
-				public BCB(string n, int n_args,  Binder.b_cb func) {
+				public ValueType?[] atypes;
+				public string[]? anames;
+				public BCB(string n, int n_args, ValueType?[] atypes = null, string[]? anames = null, Binder.b_cb func) {
 					this.func = func;
 					this.name = n;
 					this.n_args = n_args;
+					this.atypes = atypes;
+					this.anames = anames;
 				}
 			}
 			
@@ -18,11 +22,16 @@ namespace Opal {
 			public JSCore.ClassDefinition definition;
 			public JSCore.Class js_class;
 			public Binder? prototype;
+			public Binder? target;
 			
 			public Binder(string class_name, Binder? prototype = null) {
 				this.definition = JSCore.ClassDefinition();
 				this.definition.className = class_name;
 				this.prototype = prototype;
+				
+				if (prototype != null) {
+					prototype.target = this;
+				}
 				
 				
 			}
@@ -43,10 +52,21 @@ namespace Opal {
 			
 			public delegate GLib.Value? b_cb(JSCore.Object self, GLib.Value?[] args, JSCore.Context c, out JSCore.Value e);
 			
-
+			public static string[] constructors {get;private set; default=new string[0];}
 			
-			public virtual void bind(string name, b_cb cb, int n_args = -1) {
-				set_binding(name, n_args, cb);
+			public static void add_constructor(string name) {
+				if (name in constructors) {
+				} else{
+					_constructors += name;
+				}
+			}
+			
+			public virtual void bind(string name, b_cb cb, bool constructor = false, int n_args = -1, ValueType?[] atypes = null, string[]? anames = null) {
+				if (constructor) {
+				  add_constructor(name);	
+				}
+				
+				set_binding(name, n_args, atypes, anames, cb);
 				
 				var sfun = JSCore.StaticFunction() {
 					name = name,
@@ -54,31 +74,47 @@ namespace Opal {
 					
 				
 					
-					callAsFunction = (c,o, t,a, out e) => {
-						var static_binder = JSUtils.Context._read_string(c, t.get_property(c, new JSCore.String.with_utf8_c_string("static_binder"), null));
-						var q             = JSUtils.Context._read_string(c, o.get_property(c, new JSCore.String.with_utf8_c_string("static_binder"), null));
-						var tname         = JSUtils.Context._read_string(c, o.get_property(c, new JSCore.String.with_utf8_c_string("name"), null));
-						var binder        = JSUtils.Context._read_string(c, t.get_property(c, new JSCore.String.with_utf8_c_string("binder"), null));		
-				        Opal.debug("bound_static_function: %s, %s, %s, %s".printf(q, static_binder, binder, tname));
-						var func = get_binding(binder, tname) ?? get_binding(static_binder, tname);
-						
-						if (func.n_args != -1 && a.length > func.n_args) {
-							raise(c, "Too many arguments passed", out e);
-							return null;
-						}
-				  
+					callAsFunction = (c, fun, self, a, out e) => {
+						print("Hahaha\n");
+						var static_binder = (string?)((JSUtils.Object)self).get_prop(c, "static_binder");
+						var tname         = (string?)((JSUtils.Object)fun).get_prop(c, "name");
+						var binder        = (string?)((JSUtils.Object)self).get_prop(c, "binder");
+						print("EOHahaha\n");
+								
 						var args = new GLib.Value?[0];
 						foreach (unowned JSCore.ConstValue v in a) {
 							args += jval2gval(c, (JSCore.Value)v, out e);
+						}								
+								
+				        Opal.debug("bound_static_function: static_binder - %s, binder - %s, func_name - %s".printf(static_binder, binder, tname));
+						var func = get_binding(binder, tname) ?? get_binding(static_binder, tname);
+						
+						if (func.n_args != -1 && a.length > func.n_args) {
+							raise(c, "Too many arguments passed to %s, %d for %d".printf(func.name, a.length, func.n_args), out e);
+							return null;
 						}
 						
+						if (func.n_args != -1 && a.length < func.n_args) {
+							raise(c, "Too few arguments passed to %s, %d for %d".printf(func.name, a.length, func.n_args), out e);
+							return null;
+						}	
 						
+						if (func.n_args > 0) {
+							if (func.atypes != null) {
+								int? idx = check_args(args, func.atypes);
+								
+								if (idx != null ) {
+									raise(c, "ArgumentError: argument %d expects %s".printf(idx+1, func.anames != null ? func.anames[(int)idx] : func.atypes[(int)idx].to_string()), out e);
+									return null;
+								} 
+							}
+						}						
 						
 						if (e != null) {
 							return new JSCore.Value.null(c);
 						}
 					
-						GLib.Value? val = func.func(t, args, c, out e);
+						GLib.Value? val = func.func(self, args, c, out e);
 
 						JSCore.Value jv = gval2jval(c, val);
 						
@@ -90,9 +126,9 @@ namespace Opal {
 			}
 			
 			
-			public void set_binding(string n, int n_args, b_cb cb) {
+			public void set_binding(string n, int n_args = -1, ValueType?[] atypes = null, string[]? anames = null, b_cb cb) {
 				ensure_init(this);
-				var bcb = new BCB(n, n_args, cb);
+				var bcb = new BCB(n, n_args, atypes, anames, cb);
 				((Gee.HashMap<string, BCB>)Type.from_instance(this).get_qdata(Quark.from_string("map")))[n] = bcb;
 			}
 			
@@ -214,7 +250,7 @@ namespace Opal {
 				set_constructor_on(c, null, static_binder);
 			}
 			
-			
+			// BEGIN argument utils
 			public static unowned JSCore.Object? get_cb(JSCore.Context c, GLib.Value?[] args) {
 				if (args.length == 0) {
 					return null;
@@ -231,6 +267,25 @@ namespace Opal {
 				return null;
 			}
 			
+			public static int? check_args(GLib.Value?[] args, ValueType?[] types) {
+				Opal.debug("CA 000");
+				int i = 0;
+				
+				foreach(var a in args) {
+					Opal.debug("CA 001 %d".printf(i));
+					if (value_type(a) != types[i]) {
+						return i;
+					}
+					
+					i++;
+				}
+				
+				return null;
+			}
+			// END argument utils
+			
+			
+			//			
 			private Binder? klass;
 			public void create_bridge(owned Binder w, owned string prefix = "") {
 				klass = w;
@@ -270,7 +325,7 @@ namespace Opal {
 				
 				foreach (var val in map.entries) {
 					if (val.key != "apply" && val.key != "bridge") {
-						code += @"def self.$(val.key) *o,&b; o.push(b) if b; `#{native_type}['$(val.key)'].apply(#{native_type}, #{o})` ;end\n";
+						code += @"def self.$(val.key) *o,&b; o.push(b) if b; $((val.key in constructors) ? "wrap " : "")`#{native_type}['$(val.key)'].apply(#{native_type}, #{o})` ;end\n";
 					}
 				}						
 				
@@ -289,7 +344,7 @@ namespace Opal {
 				}
 				
 				code += "end\n";
-				
+				//Opal.debug_state = true;
 				Opal.debug("Generated %s ruby bridge source:\n%s\n".printf(name, code));			
 				
 				return code;	

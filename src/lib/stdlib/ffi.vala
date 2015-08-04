@@ -14,12 +14,60 @@ namespace Opal {
 		const int RTLD_LAZY = 0x00001;
 
 		public class FFIPointerBinderKlass : Opal.JSUtils.Binder {
+			public static size_t size_int32   = sizeof(int);
+			public static size_t size_pointer = sizeof(void*);
+			public static size_t size_bool  = sizeof(bool);
+			public static Gee.HashMap<string, size_t?> size_map;
+			
+			static construct {
+				size_map = new Gee.HashMap<string, size_t?>();
+				size_map["pointer"] = size_pointer;
+				size_map["int32"]   = size_int32;
+				size_map["bool"]    = size_bool;
+			}
+			
 			public FFIPointerBinderKlass() {
 				base("FFIPointerClass");
 				
 				bind("apply", (instance, args, c, out e) => {
 					return instance;
 				});		
+				
+				
+				// Return the size of a type
+				ValueType?[] s_types = {ValueType.STRING};
+				string[]     s_tnames = {"Syting/Symbol"};
+				bind("size_of", (self, args, c, out e) => {
+					string type = (string)args[0];
+					
+					GLib.Value? v = (int)size_map[type];
+					
+					return v;
+				}, false, 1, s_types, s_tnames);
+				
+				// Returns a pointer of size, args[0]
+				ValueType?[] m_types = {ValueType.DOUBLE};
+				string[] m_tnames    = {"Integer"};
+				bind("malloc", (self, args, c, out e) => {
+					//Opal.debug_state = true;
+					
+					size_t size = (size_t)(int)(double)args[0];
+			
+					void* i = malloc(size);
+					
+					GLib.Value? addr = (int)(i);
+					GLib.Value? ret;
+					
+					Opal.debug("alloc");
+										
+					var obj = new JSUtils.Object((JSUtils.Context)c, this.target.js_class, null);
+					obj.set_prop(c, "address", addr);
+					
+					obj.set_prop(c, "binder", Type.from_instance(this.target).name());
+					
+					ret = obj;
+					return obj;
+				}, true, 1, m_types, m_tnames);
 				
 				close();
 			}
@@ -28,9 +76,98 @@ namespace Opal {
 		
 		// Represents a pointer
 		public class FFIPointerBinder : Opal.JSUtils.Binder {
+			public static string[] types {get; private set; default = new string[0];}
+			public static Gee.HashMap<string, string> typedefs;
+			
+			public static bool typedef(string what, string to) {
+				if (to in types) {
+					if (what in typedefs) {
+						return false;
+					} else {
+						typedefs[what] = to;
+					}
+					
+					return true;
+				}
+				
+				return false;
+			}
+			
+			public static string? resolve_type(string type) {
+				if (type in typedefs) {
+					return resolve_type(typedefs[type]);
+				}
+				
+				if (type in types) {
+					return type;
+				}
+				
+				if (type in CallbackInfo.callbacks.keys) {
+					return type;
+				}
+				
+				return null;
+			}
+			
+			static construct {
+				typedefs = new Gee.HashMap<string, string>();
+				
+				_types += "pointer";
+				_types += "string";
+				_types += "bool";
+				_types += "int32";
+				_types += "uint32";
+				_types += "int8";
+				_types += "uint8";
+				_types += "void";
+			}
+			
+			
+			
 			public FFIPointerBinder() {
 				base("FFIPointer", new FFIPointerBinderKlass());
 				
+				bind("read_int32", (self, args, c, out e) => {
+					//Opal.debug_state = true;
+					
+					Opal.debug("read_int");
+					int addr = (int)(double)(((JSUtils.Object)self).get_prop(c, "address"));
+					
+					Opal.debug("read_int: %d".printf(addr));
+					int i = *(int*)addr.to_pointer();
+					
+					GLib.Value? v = i;
+					
+					return v;
+				}, false, 0);
+				
+				bind("read_string", (self, args, c, out e) => {
+					//Opal.debug_state = true;
+					
+					Opal.debug("read_int");
+					int addr = (int)(double)(((JSUtils.Object)self).get_prop(c, "address"));
+					
+					Opal.debug("read_int: %d".printf(addr));
+					void *i = *(void**)addr.to_pointer();
+					
+					GLib.Value? v = (string)i;
+					
+					return v;
+				}, false, 0);
+				
+				bind("read_bool", (self, args, c, out e) => {
+					//Opal.debug_state = true;
+					
+					Opal.debug("read_int");
+					int addr = (int)(double)(((JSUtils.Object)self).get_prop(c, "address"));
+					
+					Opal.debug("read_int: %d".printf(addr));
+					bool i = *(bool*)addr.to_pointer();
+					
+					GLib.Value? v = i;
+					
+					return v;
+				}, false, 0);								
 				
 				close();
 			}
@@ -51,7 +188,6 @@ namespace Opal {
 			public delegate void* t_cb(void* args);
 
 			public static void dispatch(FFI.call_interface cif, void** ret, [CCode (array_length = false)] void*[] args, FFIClosure ffic) {
-				print("here %d\n", ffic.n_args);
 				var argv = new void*[ffic.n_args];
 				
 				for (int i = 0; i < ffic.n_args; i++) {
@@ -68,6 +204,7 @@ namespace Opal {
 			public process_delegate process {get; private set;}
 			
 			public delegate void* process_delegate(void*[] args, void* data);
+			
 			public void* invoke(void*[] args) {
 				return process(args, data);
 			}
@@ -241,21 +378,36 @@ namespace Opal {
 					
 				});		
 				
+				ValueType?[] rc_types = {ValueType.STRING, ValueType.STRING, ValueType.OBJECT};
+				string[] rc_tnames    = {"Symbol", "Symbol", "Array"};
 				bind("register_callback", (self, args, c, out e) => {
 					string name = (string)args[0];
 					string rtype = (string)args[1];
 					string[] args_types = new string[0];
 					
+					if (ObjectType.from_object(c, (JSCore.Object)args[2]) != ObjectType.ARRAY) {
+						raise(c, "Expects Array as argument 3 (signature: Symbol[])", out e);
+						return null;
+					}
+					
 					var vary = jsary2vary(c, (JSCore.Object)args[2]);
 					
+					int i = 0;
 					foreach(var v in vary) {
-						args_types += (string)v;
+						var n = FFIPointerBinder.resolve_type((string)v);
+						if (n != null) {
+							args_types += (string)v;
+						} else {
+							raise(c, "Bad value for param type: %s, at param %d".printf((string)v, i), out e);
+							return null;
+						}
+						i++;
 					}
 					
 					new CallbackInfo(name, rtype, args_types);
 					
 					return true; 
-				});
+				}, false, 3, rc_types, rc_tnames);
 				
 				close();
 			}
@@ -267,11 +419,15 @@ namespace Opal {
 		public class FFIFuncBinder : Opal.JSUtils.Binder {
 			public weak JSCore.Context default_context;
 			
-			public GLib.Value? invoke(JSCore.Context c, JSCore.Object self, string module, string symbol, string rtype, GLib.Value?[] atypes, GLib.Value?[] args, out JSCore.Value e) {
+			public GLib.Value? invoke(JSCore.Context c, JSCore.Object self, string module, string symbol, string rt, GLib.Value?[] atypes, GLib.Value?[] args, out JSCore.Value e) {
 				FFI.call_interface cif;
 				void* func;
 				
-		
+		        string? rtype = FFIPointerBinder.resolve_type(rt);
+		        if (rtype == null) {
+					raise(c, "BadReturnType - Can not resolve type: `%s`".printf(rt), out e);
+					return null;
+				}
 				
 				var handle = dlopen(module, RTLD_LAZY);
 				
@@ -317,7 +473,7 @@ namespace Opal {
 						a[i] = FFI.pointer;
 					} else {
 					
-						switch ((string)atypes[i]) {
+						switch ((string)FFIPointerBinder.resolve_type((string)atypes[i])) {
 						case "string":
 							a[i] = FFI.pointer;
 							break;
@@ -447,7 +603,14 @@ namespace Opal {
 				return result;
 			}
 			
-			public void call_cif(FFI.call_interface cif, void* func, string rtype, owned void*[] args, out GLib.Value? v) {	
+			public void call_cif(FFI.call_interface cif, void* func, string rt, owned void*[] args, out GLib.Value? v) {	
+				string? rtype = FFIPointerBinder.resolve_type(rt);
+				if (rtype == null) {
+					// TODO:
+					//raise(c, "BadReturnType - Can not resolve type: `%s`".printf(rt), out e);
+					return;
+				}
+				
 				
 				switch (rtype) {
 				case "string":
@@ -550,6 +713,11 @@ namespace Opal {
 			public static weak JSCore.Object? init_object(JSCore.Object? iobj, GLib.Value?[] args, JSCore.Context c, out JSCore.Value e) {
 				Opal.debug("FUNC: 001");
 			
+			    if (args.length != 4) {
+					raise(c, "FFIFunc.new Expects exactly 4 arguments.", out e);
+					return null;
+				}
+			
 				weak JSCore.Object? instance;		
 					
 				if (iobj == null) {
@@ -580,6 +748,12 @@ namespace Opal {
 					return null;
 				}
 				
+				var rtype = FFIPointerBinder.resolve_type((string)args[2]);
+				if (rtype == null) {
+					raise(c, "BadReturnType - Can not resolve type: `%s`".printf((string)args[2]), out e);
+					return null;
+				}
+				
 				Opal.debug("FC 002");
 				
 				
@@ -589,9 +763,7 @@ namespace Opal {
 				Opal.debug("FC 003");
 				
 				for (var i = 0; i < atypes.length; i++) {
-					Opal.debug("FC 000 %d".printf(i));
 					types[i] = ValueType.STRING;
-					Opal.debug("FC 000 A %d".printf(i));
 				}
 				
 				idx = check_args(atypes, types);
@@ -599,8 +771,15 @@ namespace Opal {
 				Opal.debug("FC 004");
 				
 				if (idx != null) {
-					raise(c, "Bad Type value in arg_types[%d]".printf(idx), out e);
+					raise(c, "Expects <String|Symbol> as value in arg_types[%d]".printf(idx), out e);
 					return null;
+				}
+				
+				for (int i=0;i < atypes.length; i++) {
+					if (FFIPointerBinder.resolve_type((string)atypes[i]) == null ) {
+						raise(c, "BadParamType: Cannot resolve type `%s` at args_type[%d]".printf((string)atypes[i],i), out e);
+						return null;
+					}
 				}
 				
 				obj.set_prop(c, "module",      args[0]);
@@ -612,22 +791,6 @@ namespace Opal {
 				Opal.debug("FUNC: 999");
 				
 				return instance;		
-			}
-			
-			public static int? check_args(GLib.Value?[] args, ValueType?[] types) {
-				Opal.debug("CA 000");
-				int i = 0;
-				
-				foreach(var a in args) {
-					Opal.debug("CA 001 %d".printf(i));
-					if (value_type(a) != types[i]) {
-						return i;
-					}
-					
-					i++;
-				}
-				
-				return null;
 			}
 		}
 	}

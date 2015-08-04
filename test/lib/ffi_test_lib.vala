@@ -1,6 +1,19 @@
 namespace FFITestLib {
 	public class SomePointer {
+		public void takes_out_param(out int p) {
+			p = 66;
+		}
+		
+		public void takes_out_param2(out string p) {
+			p = "worksuperfuckinglongstringstringstringsuperfuclinglongsuperfuckinglongs";
+		}	
+		
+		public void takes_out_param3(out bool p) {
+			p = true;
+		}				
+		
 		public int returns_sint32() {
+
 			return (int)69;
 		}
 		

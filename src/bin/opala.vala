@@ -59,6 +59,7 @@ namespace Opala {
 					return null;
 				});
 				
+				ValueType?[] w_types = {ValueType.STRING, ValueType.STRING};
 				bind("write", (self, args, c, out e) => {
 					if (value_type(args[0]) != ValueType.STRING) {
 						raise(c, "Expects path argument as String", out e);
@@ -73,7 +74,7 @@ namespace Opala {
 					FileUtils.set_contents((string)args[0], (string)args[1]);
 					
 					return null;
-				}, 2);				
+				}, false, 2, w_types);				
 				
 				close();
 			}
@@ -200,7 +201,7 @@ namespace Opala {
   return $scope.get('Object').$send("remove_const", $scope.get('File'))
 })(Opal);""";
 		
-		public const string OPALA_NATIVE_WRAPPER = """!function(e){e.dynamic_require_severity="error";var t=e.top,n=e.nil,a=(e.breaker,e.slice),i=e.module,r=e.klass;return e.add_stubs(["$new","$set_native_type","$native_type","$allocate","$send","$_native=","$attr_accessor"]),function(t){var $=i(t,"Opala"),s=($.$$proto,$.$$scope);e.defs($,"$Interface",function(e){var t=n;return t=s.get("Class").$new(s.get("Opala").$$scope.get("Object")),t.$set_native_type(e),t}),function(t,i){function $(){}{var s,l=$=r(t,i,"Object",$);l.$$proto,l.$$scope}return e.defs(l,"$inherited",function(e){var t=this;return e.$set_native_type(t.$native_type())}),e.defs(l,"$set_native_type",function(e){var t=this;return t.native_type=e}),e.defs(l,"$native_type",function(){var e=this;return null==e.native_type&&(e.native_type=n),e.native_type}),e.defs(l,"$new",function(e){var t,i,r=this,$=n;return e=a.call(arguments,0),$=r.$allocate(),$.$send("initialize"),t=[r.$native_type().apply(Object.create(null),e)],i=$,i["$_native="].apply(i,t),t[t.length-1],$}),e.defs(l,"$wrap",s=function(e,t){var i,r,$=this,l=(s.$$p,n);return t=a.call(arguments,1),s.$$p=null,l=$.$allocate(),l.$send("initialize"),i=[e],r=l,r["$_native="].apply(r,i),i[i.length-1],l}),l.$attr_accessor("_native")}($,null)}(t)}(Opal);""";
+		public const string OPALA_NATIVE_WRAPPER = """!function(e){e.dynamic_require_severity="error";var t=e.top,n=e.nil,a=(e.breaker,e.slice),i=e.module,r=e.klass;return e.add_stubs(["$new","$set_native_type","$native_type","$allocate","$send","$_native=","$attr_accessor"]),function(t){var $=i(t,"Opala"),s=($.$$proto,$.$$scope);e.defs($,"$Interface",function(e){var t=n;return t=s.get("Class").$new(s.get("Opala").$$scope.get("Object")),t.$set_native_type(e),t}),function(t,i){function $(){}{var s,l=$=r(t,i,"Object",$);l.$$proto,l.$$scope}return e.defs(l,"$inherited",function(e){var t=this;return e.$set_native_type(t.$native_type())}),e.defs(l,"$set_native_type",function(e){var t=this;return t.native_type=e}),e.defs(l,"$native_type",function(){var e=this;return null==e.native_type&&(e.native_type=n),e.native_type}),e.defs(l,"$new",function(e){var t,i,r=this,$=n;return e=a.call(arguments,0),$=r.$allocate(),$.$send("initialize"),t=[r.$native_type().apply(Object.create(null),e)],i=$,i["$_native="].apply(i,t),t[t.length-1],$}),e.defs(l,"$wrap",s=function(e,t){var i,r,$=this,l=(s.$$p,n);return t=a.call(arguments,1),s.$$p=null,l=$.$allocate(),i=[e],r=l,r["$_native="].apply(r,i),i[i.length-1],l}),l.$attr_accessor("_native")}($,null)}(t)}(Opal);""";
 
 		
 		public Runner(owned bool parser, string[]? argv = null, bool console = false, bool stdlib = false, JSUtils.Context? ctx = null) {
@@ -247,7 +248,9 @@ namespace Opala {
 				
 				if (!FileUtils.test("opala-stdlib/ffi_pointer.rb.js", FileTest.EXISTS)) {
 					var js = funcb.pointer_binder.prototype.compile_bridge_code(context, funcb.pointer_binder, null);
+					//Opal.debug_state = true;
 					Opal.debug("\n\n\n\n\n%s\n\n\n\n".printf(js));
+					//Opal.debug_state = false;					
 					context.exec(js);
 				} else {
 					string code;
