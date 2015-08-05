@@ -1,4 +1,4 @@
-namespace Opal {
+namespace VRbJS {
 	using JSUtils;
 	
 	public const string OPAL = """
@@ -37,5 +37,16 @@ default:return slashes.slice(1)+(match[command]||"")}}).replace(/\\\\/g,"\\")}if
 	}
 	
 	public bool debug_state = false;	
+	
+	[CCode (cname = "dlopen")] 
+	extern unowned void * dlopen (string filename, int flag);
+
+	[CCode (cname = "dlerror")] 
+	extern unowned string dlerror ();
+
+	[CCode (cname = "dlsym")] 
+	extern unowned void * dlsym (void * handle, string symbol);
+
+	const int RTLD_LAZY = 0x00001;	
 }
 

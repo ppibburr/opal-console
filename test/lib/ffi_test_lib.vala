@@ -10,7 +10,11 @@ namespace FFITestLib {
 		
 		public void takes_out_param3(out bool p) {
 			p = true;
-		}				
+		}
+		
+		public void takes_out_param4(out SomePointer p) {
+			p = this;
+		}						
 		
 		public int returns_sint32() {
 

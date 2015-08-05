@@ -4,10 +4,10 @@
   function $rb_plus(lhs, rhs) {
     return (typeof(lhs) === 'number' && typeof(rhs) === 'number') ? lhs + rhs : lhs['$+'](rhs);
   }
-  var $a, $b, TMP_3, self = Opal.top, $scope = Opal, nil = Opal.nil, $breaker = Opal.breaker, $slice = Opal.slice, $module = Opal.module, $klass = Opal.klass, $hash2 = Opal.hash2, $gvars = Opal.gvars, $range = Opal.range, opts = nil, source = nil, parser = nil, code = nil, e = nil;
+  var $a, $b, $c, TMP_3, self = Opal.top, $scope = Opal, nil = Opal.nil, $breaker = Opal.breaker, $slice = Opal.slice, $module = Opal.module, $klass = Opal.klass, $hash2 = Opal.hash2, $gvars = Opal.gvars, $range = Opal.range, opts = nil, source = nil, parser = nil, code = nil, e = nil;
   if ($gvars["0"] == null) $gvars["0"] = nil;
 
-  Opal.add_stubs(['$split', '$!', '$empty?', '$=~', '$first', '$index', '$raise', '$==', '$[]', '$shift', '$nil?', '$map', '$include?', '$<<', '$has_key?', '$[]=', '$flatten', '$puts', '$print', '$ljust', '$getopts', '$usage', '$length', '$read', '$last', '$write', '$each']);
+  Opal.add_stubs(['$split', '$!', '$empty?', '$=~', '$first', '$index', '$raise', '$==', '$[]', '$shift', '$nil?', '$map', '$include?', '$<<', '$has_key?', '$[]=', '$flatten', '$puts', '$print', '$ljust', '$new', '$getopts', '$usage', '$dump', '$length', '$read', '$last', '$write', '$each', '$append_argv', '$run']);
   (function($base) {
     var self = $module($base, 'Getopt');
 
@@ -78,7 +78,7 @@ if (e == null) e = nil;
   })(self);
   $scope.get('ARGV').$shift();
   Opal.cdecl($scope, 'VERSION', "0.1.0");
-  Opal.cdecl($scope, 'OPTIONS', $hash2(["e", "v", "h", "w", "c", "j", "s"], {"e": "Execute inline ruby script", "v": "Print version", "h": "Print this message", "w": "run in headless WebKit", "c": "Transpile ruby source to JS", "j": "Execute inline js", "s": "include stdlib"}));
+  Opal.cdecl($scope, 'OPTIONS', $hash2(["e", "v", "h", "w", "c", "j", "s", "d TARGET"], {"e": "Execute inline ruby script", "v": "Print version", "h": "Print this message", "w": "run in headless WebKit", "c": "Transpile ruby source to JS", "j": "Execute inline js", "s": "include stdlib", "d TARGET": "dump the bridge code of an extension TARGET"}));
   Opal.Object.$$proto.$usage = function(msg) {
     var $a, $b, TMP_2, self = this;
 
@@ -86,7 +86,7 @@ if (e == null) e = nil;
       msg = ""
     }
     self.$puts(msg);
-    self.$puts("opala - A ruby source runner/transpiler via Opal in JavaScriptCore\n\n");
+    self.$puts("opala - A ruby source runner/transpiler via VRbJS in JavaScriptCore\n\n");
     self.$puts("Usage:");
     self.$puts("opala [OPTIONs] [PATH|CODE]\n\n");
     self.$puts("OPTIONS:");
@@ -95,22 +95,25 @@ if (k == null) k = nil;if (v == null) v = nil;
     return self.$print($rb_plus((("-") + (k)).$ljust(10), "" + (v) + "\n"))}, TMP_2.$$s = self, TMP_2), $a).call($b);
   };
   try {
-  opts = (($scope.get('Getopt')).$$scope.get('Std')).$getopts("vhwcejs");
+  Opal.cdecl($scope, 'PROGRAM', $scope.get('Program').$new());
+    opts = (($scope.get('Getopt')).$$scope.get('Std')).$getopts("d:vhwcejs");
     $gvars["0"] = "(file)";
-    if ((($a = ((($b = opts['$[]']("v")) !== false && $b !== nil) ? $b : opts['$[]']("h"))) !== nil && (!$a.$$is_boolean || $a == true))) {
+    if ((($a = ((($b = ((($c = opts['$[]']("v")) !== false && $c !== nil) ? $c : opts['$[]']("h"))) !== false && $b !== nil) ? $b : opts['$[]']("d"))) !== nil && (!$a.$$is_boolean || $a == true))) {
       if ((($a = opts['$[]']("v")) !== nil && (!$a.$$is_boolean || $a == true))) {
-        self.$puts($scope.get('VERSION'))};
-      if ((($a = opts['$[]']("h")) !== nil && (!$a.$$is_boolean || $a == true))) {
+        return self.$puts($scope.get('VERSION'))
+      } else if ((($a = opts['$[]']("h")) !== nil && (!$a.$$is_boolean || $a == true))) {
         return self.$usage()
+      } else if ((($a = opts['$[]']("d")) !== nil && (!$a.$$is_boolean || $a == true))) {
+        return self.$puts($scope.get('PROGRAM').$dump(opts['$[]']("d")))
         } else {
         return nil
-      };
+      }
     } else if ((($a = opts['$[]']("c")) !== nil && (!$a.$$is_boolean || $a == true))) {
       if ((($a = opts.$length()['$=='](1)['$!']()) !== nil && (!$a.$$is_boolean || $a == true))) {
         self.$raise("Too many options passed. -c takes 0 options")};
-      source = self.$read($scope.get('ARGV').$last());
+      source = $scope.get('PROGRAM').$read($scope.get('ARGV').$last());
       Opal.require('opal-parser');
-      return self.$write($rb_plus($scope.get('ARGV').$last(), ".js"), Opal.compile(source));
+      return $scope.get('PROGRAM').$write($rb_plus($scope.get('ARGV').$last(), ".js"), Opal.compile(source));
       } else {
       $gvars["0"] = "(file)";
       parser = true;
@@ -121,14 +124,14 @@ if (k == null) k = nil;if (v == null) v = nil;
         parser = false;
         } else {
         $gvars["0"] = $scope.get('ARGV').$shift();
-        code = self.$read($gvars["0"]);
+        code = $scope.get('PROGRAM').$read($gvars["0"]);
         ($a = ($b = $scope.get('ARGV')).$each, $a.$$p = (TMP_3 = function(a){var self = TMP_3.$$s || this;
 if (a == null) a = nil;
-        return append_argv(a);;}, TMP_3.$$s = self, TMP_3), $a).call($b);
+        return $scope.get('PROGRAM').$append_argv(a)}, TMP_3.$$s = self, TMP_3), $a).call($b);
         if ((($a = $gvars["0"].$split(".").$last()['$==']("rb")['$!']()) !== nil && (!$a.$$is_boolean || $a == true))) {
           parser = false};
       };
-      return run(code, opts['$[]']("w")['$!']()['$!'](), parser, $gvars["0"], opts['$[]']("s")['$=='](nil)['$!']());;
+      return $scope.get('PROGRAM').$run(code, opts['$[]']("w")['$!']()['$!'](), parser, $gvars["0"], opts['$[]']("s")['$=='](nil)['$!']());
     };
   } catch ($err) {if (true) {e = $err;
     return self.$usage(e)

@@ -1,4 +1,4 @@
-namespace Opal {
+namespace VRbJS {
 	namespace StandardLibrary {
 		using JSUtils;
 		public class JFile : JSUtils.Binder {
@@ -74,7 +74,7 @@ namespace Opal {
 		}
 
 
-		public class JFileKlass : Opal.JSUtils.Binder {
+		public class JFileKlass : VRbJS.JSUtils.Binder {
 			public JFileKlass() {
 				base("FileClass");
 				bind("read", (self, args, c, out e) => {

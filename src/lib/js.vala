@@ -1,4 +1,4 @@
-namespace Opal{
+namespace VRbJS{
 	namespace JSUtils {
 public enum ValueType {
 				NULL,
@@ -125,10 +125,10 @@ public enum ValueType {
 			
 			
 			public static JSCore.Value string_value(JSCore.Context c, string val) {
-				Opal.debug("STRING_VALUE: 001");
+				VRbJS.debug("STRING_VALUE: 001");
 				JSCore.Value j;
 				JSUtils.Value.string(c, val, out j);
-				Opal.debug("STRING_VALUE: 002");				
+				VRbJS.debug("STRING_VALUE: 002");				
 				return j;
 			}
 			

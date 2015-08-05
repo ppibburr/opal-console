@@ -1,5 +1,5 @@
 
-namespace Opal {
+namespace VRbJS {
 	namespace JSUtils {
 		public class Binder {
 			public class BCB {
@@ -37,6 +37,7 @@ namespace Opal {
 			}
 			
 			public void close() {
+				ensure_init(this);
 				var sf = new JSCore.StaticFunction[static_functions.length+1];
 				
 				for (var i = 0; i < static_functions.length; i++) {
@@ -86,7 +87,7 @@ namespace Opal {
 							args += jval2gval(c, (JSCore.Value)v, out e);
 						}								
 								
-				        Opal.debug("bound_static_function: static_binder - %s, binder - %s, func_name - %s".printf(static_binder, binder, tname));
+				        VRbJS.debug("bound_static_function: static_binder - %s, binder - %s, func_name - %s".printf(static_binder, binder, tname));
 						var func = get_binding(binder, tname) ?? get_binding(static_binder, tname);
 						
 						if (func.n_args != -1 && a.length > func.n_args) {
@@ -226,6 +227,7 @@ namespace Opal {
 				
 				GLib.Value v = Type.from_instance(this).name();
 				m.set_property(c, new JSCore.String.with_utf8_c_string("static_binder"), gval2jval(c,v), JSCore.PropertyAttribute.ReadOnly, null);
+				m.set_property(c, new JSCore.String.with_utf8_c_string("binder"), gval2jval(c,v), JSCore.PropertyAttribute.ReadOnly, null);
 			    				
 				o.set_property(c, new JSCore.String.with_utf8_c_string(this.definition.className), m, JSCore.PropertyAttribute.ReadOnly, null);
 			    return m;
@@ -242,11 +244,11 @@ namespace Opal {
 			} 
 			
 			public void init_global(JSCore.Context c, Binder? static_binder = null) {
-				Opal.debug("INIT_GLOBAL: 001");
+				VRbJS.debug("INIT_GLOBAL: 001");
 				var val = string_value(c, Type.from_instance(this).name());
-				Opal.debug("INIT_GLOBAL: 002");
+				VRbJS.debug("INIT_GLOBAL: 002");
 				c.get_global_object().set_property(c, new JSCore.String.with_utf8_c_string("binder"), val, JSCore.PropertyAttribute.ReadOnly, null);
-				Opal.debug("INIT_GLOBAL: 003");
+				VRbJS.debug("INIT_GLOBAL: 003");
 				set_constructor_on(c, null, static_binder);
 			}
 			
@@ -268,11 +270,11 @@ namespace Opal {
 			}
 			
 			public static int? check_args(GLib.Value?[] args, ValueType?[] types) {
-				Opal.debug("CA 000");
+				VRbJS.debug("CA 000");
 				int i = 0;
 				
 				foreach(var a in args) {
-					Opal.debug("CA 001 %d".printf(i));
+					VRbJS.debug("CA 001 %d".printf(i));
 					if (value_type(a) != types[i]) {
 						return i;
 					}
@@ -292,7 +294,7 @@ namespace Opal {
 				
 				
 				bind("bridge", (self, args, c, out e) => {					
-					string js   = compile_bridge_code(c, null, out e); 
+					string js   = compile_bridge_code(c, target, out e); 
 					
 					((JSUtils.Context)c).exec("""eval("%s");""".printf(js.escape(null)));
 					
@@ -300,52 +302,52 @@ namespace Opal {
 				});
 			}		
 			
-			public string compile_bridge_code(JSCore.Context c, Binder? klass = this.klass, out JSCore.Value e) {
+			public string compile_bridge_code(JSCore.Context c, Binder? klass = null, out JSCore.Value e) {
 				string code = generate_bridge_code(c, klass, out e);
-				Opal.debug("compile_bride_code: 001");
+				VRbJS.debug("compile_bride_code: 001");
 				return (string)jval2gval(c, ((JSUtils.Context)c).exec("""Opal.compile("%s");""".printf(code.escape(null))).native, out e);
 			}	
 			
-			public string generate_bridge_code(JSCore.Context c, owned Binder? klass = this.klass, out JSCore.Value e) {
+			public string generate_bridge_code(JSCore.Context c, owned Binder? klass = null, out JSCore.Value e) {
 				if (klass != null) {
-					this.klass = klass;
+					this.target = klass;
 				}
 				
-				unowned string name = this.klass.definition.className;
+				unowned string name = this.target.definition.className;
 				
-				var code = @"class $(name) < Opala.Interface(`$(name)`)\n";
+				var code = @"class $(name) < VRbJS.Interface(`$(name)`)\n";
 				
 				Gee.HashMap<string, BCB>? map = ((Gee.HashMap<string, BCB>?)Type.from_instance(this).get_qdata(Quark.from_string("map")));
 				
 				if (map == null) {
-					Opal.debug("NULL MAP");
+					VRbJS.debug("NULL MAP1");
 					raise(c, "NULL_MAP", out e);
 					return null;
 				}
 				
 				foreach (var val in map.entries) {
 					if (val.key != "apply" && val.key != "bridge") {
-						code += @"def self.$(val.key) *o,&b; o.push(b) if b; $((val.key in constructors) ? "wrap " : "")`#{native_type}['$(val.key)'].apply(#{native_type}, #{o})` ;end\n";
+						code += @"\n  def self.$(val.key) *o,&b\n    o.push(b) if b\n    $((val.key in constructors) ? "wrap " : "")`#{native_type}['$(val.key)'].apply(#{native_type}, #{o})` \n  end\n";
 					}
 				}						
 				
-				map = ((Gee.HashMap<string, BCB>?)Type.from_instance(this.klass).get_qdata(Quark.from_string("map")));
+				map = ((Gee.HashMap<string, BCB>?)Type.from_instance(this.target).get_qdata(Quark.from_string("map")));
 				
 				if (map == null) {
-					Opal.debug("NULL MAP");
+					VRbJS.debug("NULL MAP2");
 					raise(c, "NULL_MAP", out e);
 					return null;
 				}
 				
 				foreach (var val in map.entries) {
 					
-					code += @"def $(val.key) *o,&b; o.push(b) if b; `#{@_native}['$(val.key)'].apply(#{@_native}, #{o})` ;end\n";
+					code += @"\n  def $(val.key) *o,&b\n    o.push(b) if b;\n    $((val.key in this.klass.constructors) ? "self.class.wrap " : "")`#{@_native}['$(val.key)'].apply(#{@_native}, #{o})` \n  end\n";
 					
 				}
 				
 				code += "end\n";
-				//Opal.debug_state = true;
-				Opal.debug("Generated %s ruby bridge source:\n%s\n".printf(name, code));			
+				//VRbJS.debug_state = true;
+				VRbJS.debug("# Generated %s ruby bridge source:\n%s\n".printf(name, code));			
 				
 				return code;	
 			}

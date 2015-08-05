@@ -1,4 +1,4 @@
-namespace Opal {
+namespace VRbJS {
 	using JSUtils;
 	public class Runtime {
 		private bool owns_context = false;
@@ -32,11 +32,11 @@ namespace Opal {
 				owns_context = false;
 			}
             
-            //Opal.debug("RUNTIME: 001");
+            //VRbJS.debug("RUNTIME: 001");
 
-			init_opal(this.context, parser, argv);
+			init_opal(parser, argv);
 			
-			//Opal.debug("RUNTIME: 002");
+			//VRbJS.debug("RUNTIME: 002");
 		}
 		
 		public class Console : JSUtils.Binder {
@@ -77,12 +77,12 @@ namespace Opal {
 			  
 		}		
 		
-		// Load Opal and optionally 'opal-parser'
-		public static void init_opal(Context context, bool parser=false, string[] argv = new string[0]) {
+		// Load VRbJS and optionally 'opal-parser'
+		public void init_opal(bool parser=false, string[] argv = new string[0]) {
 			//debug("INIT_OPAL: 001");
 			
-			// Opal runtime and parser
-			context.exec(Opal.OPAL+Opal.OPAL_PARSER);
+			// VRbJS runtime and parser
+			context.exec(VRbJS.OPAL+VRbJS.OPAL_PARSER);
 
             var args = "";
             int i = 0;
@@ -101,17 +101,83 @@ namespace Opal {
 
             if (parser) {
 			// require the parser 
-				var code = "Opal.require('opal-parser');";
-				context.exec(code);
+				load_parser();
 			}	
 		}
 		
-		public JSUtils.Value require(string what) {
-			return context.exec("""Opal.require("%s")""".printf(what));
+		public void load_parser() {
+				var code = "Opal.require('opal-parser');";
+				context.exec(code);			
+		}
+		
+		public bool require(string name, bool no_so=false) {
+			VRbJS.debug("in require\n");
+			string path = name;
+			bool needs_parser = false;
+			
+			if (load_so(name) == null || no_so) {
+				VRbJS.debug("no so\n");
+				if (!f_exist(path)) {
+					if (!f_exist(path)) {
+						path = @"./$(name).rb.js";	
+						if (!f_exist(path)) {
+							path = @"./$(name).rb";			
+							if (!f_exist(path)) {					
+								path = @"$(lib_dir)/$(name)";
+								if (!f_exist(path)) {
+									path = @"$(lib_dir)/$(name).rb.js";
+									if (!f_exist(path)) {
+										path = @"$(lib_dir)/$(name)/$(name).rb.js";
+										if (!f_exist(path)) {
+											path = @"$(lib_dir)/$(name).rb";
+											if (!f_exist(path)) {
+												path = @"$(lib_dir)/$(name)/$(name).rb";
+												if (!f_exist(path)) {
+													JSCore.Value? e;
+													var v = jval2gval(context, context.exec("""Opal.require("%s");""".printf(name)).native, out e);
+													
+													if (e != null) {
+														return false;
+													}
+													return (bool)v;
+												}
+											}																		
+										}							
+									}							
+								}	
+							}
+						}
+					}			
+				} 
+			} else {
+				require(name, true);
+				return true;
+			}
+			
+			if (!f_exist(path)) {
+				return false;
+			}		
+			
+			var exts = path.split(".");
+			if (exts[exts.length-1] != "js") {
+				needs_parser = true;
+			}
+			
+			if (needs_parser) {
+				load(path);
+				return true;
+			}	
+			
+			var code = "";
+			FileUtils.get_contents(path, out code, null);
+			context.exec(code);
+			
+			return true;
 		}
 		
 		// Loads a ruby file at +path+
 		public JSUtils.Value load(string path) {
+			load_parser();
 			var code = "";
 			FileUtils.get_contents(path, out code, null);
 			return exec(code);
@@ -128,10 +194,60 @@ namespace Opal {
 			return result;
 		}
 		
-		public Opal.JSUtils.Binder add_toplevel_class(JSUtils.Binder klass) {
+		public VRbJS.JSUtils.Binder add_toplevel_class(JSUtils.Binder klass) {
 			klass.set_constructor_on(context);
 			
 			return klass;
+		}	
+		
+		public delegate VRbJS.JSUtils.Binder? init_lib(VRbJS.Runtime self, void* q);
+	    public static string? lib_dir;
+	    static construct {
+			lib_dir = GLib.Environment.get_variable("VRBJS_LIB_DIR") ?? "./vrbjs";			
+		}	
+		
+		public VRbJS.JSUtils.Binder? load_so(owned string name) {
+			string path = name;
+			
+			if (!f_exist(path)) {
+				path = @"$(name).so";					
+				if (!f_exist(path)) {		
+					if (!f_exist(path)) {			
+						path = @"./$(name)";	
+						if (!f_exist(path)) {	
+							path = @"./$(name).so";
+							if (!f_exist(path)) {
+								path = @"$(lib_dir)/$(name)";
+								if (!f_exist(path)) {
+									path = @"$(lib_dir)/$(name).so";
+									if (!f_exist(path)) {
+										path = @"$(lib_dir)/$(name)/$(name).so";
+									}							
+								}				
+							}
+						}
+					}
+				}
+			}
+			
+			if (!f_exist(path)) {
+				VRbJS.debug("no so found\n");
+				return null;
+			}			
+			
+			name = GLib.Path.get_basename(name);
+			
+			var split = name.split(".");
+			name = split[0];
+			VRbJS.debug(@"so: $name - $path");
+			var handle = dlopen(path, RTLD_LAZY);
+			var fun    = (init_lib)dlsym(handle, @"$(name)_init");
+			
+			return fun(this,null);
+		}	
+		
+		public bool f_exist(string path) {
+			return FileUtils.test (path, FileTest.EXISTS);
 		}	
 	
 	}

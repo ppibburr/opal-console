@@ -1,4 +1,4 @@
-namespace Opal {
+namespace VRbJS {
 	namespace JsFFI {
 		using JSUtils;
 
@@ -13,163 +13,98 @@ namespace Opal {
 
 		const int RTLD_LAZY = 0x00001;
 
-		public class FFIPointerBinderKlass : Opal.JSUtils.Binder {
-			public static size_t size_int32   = sizeof(int);
-			public static size_t size_pointer = sizeof(void*);
-			public static size_t size_bool  = sizeof(bool);
-			public static Gee.HashMap<string, size_t?> size_map;
-			
-			static construct {
-				size_map = new Gee.HashMap<string, size_t?>();
-				size_map["pointer"] = size_pointer;
-				size_map["int32"]   = size_int32;
-				size_map["bool"]    = size_bool;
+		// The 'data' passed to closure binding
+		public class Data : GLib.Object {
+			public weak JSCore.Context c; 
+			public weak JSCore.Object? self; 
+			public weak JSCore.Object func;
+			public CallbackInfo? info = null;
+			public FFIPointerBinder? pointer_binder;
+			public Data(JSCore.Context c, FFIPointerBinder? pointer_binder, JSCore.Object? self, JSCore.Object func, CallbackInfo? cb = null) {
+				this.c = c;
+				this.self = self;
+				this.func = func;
+				this.info = cb;
+				this.pointer_binder = pointer_binder;
 			}
 			
-			public FFIPointerBinderKlass() {
-				base("FFIPointerClass");
+			public GLib.Value? call(void*[] args) {
+				// void *p = *(void**)args[0];
 				
-				bind("apply", (instance, args, c, out e) => {
-					return instance;
-				});		
+				VRbJS.debug("Data#call: 001");			
+							
+				if (info == null) {
+				    JSUtils.call(c, self, func, null);			
+				    return null;
+				}
 				
+				GLib.Value?[] vary = new GLib.Value?[args.length];
 				
-				// Return the size of a type
-				ValueType?[] s_types = {ValueType.STRING};
-				string[]     s_tnames = {"Syting/Symbol"};
-				bind("size_of", (self, args, c, out e) => {
-					string type = (string)args[0];
-					
-					GLib.Value? v = (int)size_map[type];
-					
-					return v;
-				}, false, 1, s_types, s_tnames);
+				VRbJS.debug("Data#call: 002");
 				
-				// Returns a pointer of size, args[0]
-				ValueType?[] m_types = {ValueType.DOUBLE};
-				string[] m_tnames    = {"Integer"};
-				bind("malloc", (self, args, c, out e) => {
-					//Opal.debug_state = true;
+				for (int i = 0; i<args.length; i++) {
+					var q = carg2gval(info.args_types[i], args[i]);
 					
-					size_t size = (size_t)(int)(double)args[0];
-			
-					void* i = malloc(size);
-					
-					GLib.Value? addr = (int)(i);
-					GLib.Value? ret;
-					
-					Opal.debug("alloc");
-										
-					var obj = new JSUtils.Object((JSUtils.Context)c, this.target.js_class, null);
-					obj.set_prop(c, "address", addr);
-					
-					obj.set_prop(c, "binder", Type.from_instance(this.target).name());
-					
-					ret = obj;
-					return obj;
-				}, true, 1, m_types, m_tnames);
-				
-				close();
-			}
-		}
-
-		
-		// Represents a pointer
-		public class FFIPointerBinder : Opal.JSUtils.Binder {
-			public static string[] types {get; private set; default = new string[0];}
-			public static Gee.HashMap<string, string> typedefs;
-			
-			public static bool typedef(string what, string to) {
-				if (to in types) {
-					if (what in typedefs) {
-						return false;
-					} else {
-						typedefs[what] = to;
+					if (q == null) {
+						VRbJS.debug("Data#call: NULL POINTER ARG");
 					}
 					
+					if (info.args_types[i] == "pointer") {
+						VRbJS.debug("Data#call: 003 make pointer jval %s".printf(value_type(q).to_string()));
+						var obj = new JSCore.Object(c, pointer_binder.js_class, null);
+						VRbJS.debug("Data#call: 004 set address");
+						((JSUtils.Object)obj).set_prop(c, "address", q);
+						q = obj;	
+					}
+					
+					vary[i] = q;
+				}
+				
+				VRbJS.debug("Data#call: 005 call jfunc");
+				
+				var res = JSUtils.call(c, self, func, vary);
+
+				VRbJS.debug("Data#call: 006");
+
+				return res;
+				
+			}
+		}
+		
+		
+		
+		public class CallbackInfo {
+			public string rtype;
+			public string[] args_types;
+			public string name;
+			
+			public static Gee.HashMap<string,CallbackInfo> callbacks;
+			
+			public CallbackInfo (string name, string rtype, string[] args_types) {
+				this.name = name;
+				this.rtype = rtype;
+				this.args_types = args_types;
+				callbacks[name] = this;
+			}
+			
+			static construct {
+				callbacks = new Gee.HashMap<string, CallbackInfo>();
+			}
+			
+			public static bool is_registered(string name) {
+				if (name in callbacks) {
 					return true;
 				}
 				
 				return false;
 			}
 			
-			public static string? resolve_type(string type) {
-				if (type in typedefs) {
-					return resolve_type(typedefs[type]);
-				}
-				
-				if (type in types) {
-					return type;
-				}
-				
-				if (type in CallbackInfo.callbacks.keys) {
-					return type;
+			public static CallbackInfo? get_callback(string name) {
+				if (is_registered(name)) {
+					return callbacks[name];
 				}
 				
 				return null;
-			}
-			
-			static construct {
-				typedefs = new Gee.HashMap<string, string>();
-				
-				_types += "pointer";
-				_types += "string";
-				_types += "bool";
-				_types += "int32";
-				_types += "uint32";
-				_types += "int8";
-				_types += "uint8";
-				_types += "void";
-			}
-			
-			
-			
-			public FFIPointerBinder() {
-				base("FFIPointer", new FFIPointerBinderKlass());
-				
-				bind("read_int32", (self, args, c, out e) => {
-					//Opal.debug_state = true;
-					
-					Opal.debug("read_int");
-					int addr = (int)(double)(((JSUtils.Object)self).get_prop(c, "address"));
-					
-					Opal.debug("read_int: %d".printf(addr));
-					int i = *(int*)addr.to_pointer();
-					
-					GLib.Value? v = i;
-					
-					return v;
-				}, false, 0);
-				
-				bind("read_string", (self, args, c, out e) => {
-					//Opal.debug_state = true;
-					
-					Opal.debug("read_int");
-					int addr = (int)(double)(((JSUtils.Object)self).get_prop(c, "address"));
-					
-					Opal.debug("read_int: %d".printf(addr));
-					void *i = *(void**)addr.to_pointer();
-					
-					GLib.Value? v = (string)i;
-					
-					return v;
-				}, false, 0);
-				
-				bind("read_bool", (self, args, c, out e) => {
-					//Opal.debug_state = true;
-					
-					Opal.debug("read_int");
-					int addr = (int)(double)(((JSUtils.Object)self).get_prop(c, "address"));
-					
-					Opal.debug("read_int: %d".printf(addr));
-					bool i = *(bool*)addr.to_pointer();
-					
-					GLib.Value? v = i;
-					
-					return v;
-				}, false, 0);								
-				
-				close();
 			}
 		}
 
@@ -252,18 +187,25 @@ namespace Opal {
 		
 		public static GLib.Value? carg2gval(string type, void* val) {
 			GLib.Value? v;
-			switch (type) {
+			
+			switch (FFIPointerBinder.resolve_type(type)) {
 			case "string":
 				v = (string)val;
 				break;
+				
 			case "pointer":
-			    Opal.debug("carg2gval: pointer");
 				void *p = *(void**)val;
 				v = (int)p;
 				break;
+			
 			case "int32":
 			    v = *(int*)val;
 			    break;
+			    
+			case "bool":
+			    v = *(bool*)val;
+			    break;			    
+			
 			default:
 				v = null;
 				break;
@@ -272,103 +214,194 @@ namespace Opal {
 			return v;	
 		}
 		
-		
-		// The 'data' passed to closure binding
-		public class Data : GLib.Object {
-			public weak JSCore.Context c; 
-			public weak JSCore.Object? self; 
-			public weak JSCore.Object func;
-			public CallbackInfo? info = null;
-			public FFIPointerBinder? pointer_binder;
-			public Data(JSCore.Context c, FFIPointerBinder? pointer_binder, JSCore.Object? self, JSCore.Object func, CallbackInfo? cb = null) {
-				this.c = c;
-				this.self = self;
-				this.func = func;
-				this.info = cb;
-				this.pointer_binder = pointer_binder;
-			}
-			
-			public GLib.Value? call(void*[] args) {
-				// void *p = *(void**)args[0];
-				
-				Opal.debug("Data#call: 001");			
-							
-				if (info == null) {
-				    JSUtils.call(c, self, func, null);			
-				    return null;
-				}
-				
-				GLib.Value?[] vary = new GLib.Value?[args.length];
-				
-				Opal.debug("Data#call: 002");
-				
-				for (int i = 0; i<args.length; i++) {
-					var q = carg2gval(info.args_types[i], args[i]);
-					
-					if (q == null) {
-						Opal.debug("Data#call: NULL POINTER ARG");
-					}
-					
-					if (info.args_types[i] == "pointer") {
-						Opal.debug("Data#call: 003 make pointer jval %s".printf(value_type(q).to_string()));
-						var obj = new JSCore.Object(c, pointer_binder.js_class, null);
-						Opal.debug("Data#call: 004 set address");
-						((JSUtils.Object)obj).set_prop(c, "address", q);
-						q = obj;	
-					}
-					
-					vary[i] = q;
-				}
-				
-				Opal.debug("Data#call: 005 call jfunc");
-				
-				var res = JSUtils.call(c, self, func, vary);
 
-				Opal.debug("Data#call: 006");
-
-				return res;
-				
-			}
-		}
-		
-		
-		
-		public class CallbackInfo {
-			public string rtype;
-			public string[] args_types;
-			public string name;
-			
-			public static Gee.HashMap<string,CallbackInfo> callbacks;
-			
-			public CallbackInfo (string name, string rtype, string[] args_types) {
-				this.name = name;
-				this.rtype = rtype;
-				this.args_types = args_types;
-				callbacks[name] = this;
-			}
+		public class FFIPointerBinderKlass : VRbJS.JSUtils.Binder {
+			public static size_t size_int32   = sizeof(int);
+			public static size_t size_pointer = sizeof(void*);
+			public static size_t size_bool  = sizeof(bool);
+			public static Gee.HashMap<string, size_t?> size_map;
 			
 			static construct {
-				callbacks = new Gee.HashMap<string, CallbackInfo>();
+				size_map = new Gee.HashMap<string, size_t?>();
+				size_map["pointer"] = size_pointer;
+				size_map["int32"]   = size_int32;
+				size_map["bool"]    = size_bool;
 			}
 			
-			public static bool is_registered(string name) {
-				if (name in callbacks) {
+			public FFIPointerBinderKlass() {
+				base("FFIPointerClass");
+				
+				bind("apply", (instance, args, c, out e) => {
+					return instance;
+				});		
+				
+				
+				// Return the size of a type
+				ValueType?[] s_types = {ValueType.STRING};
+				string[]     s_tnames = {"Syting/Symbol"};
+				bind("size_of", (self, args, c, out e) => {
+					string type = (string)args[0];
+					
+					GLib.Value? v = (int)size_map[type];
+					
+					return v;
+				}, false, 1, s_types, s_tnames);
+				
+				// Returns a pointer of size, args[0]
+				ValueType?[] m_types = {ValueType.DOUBLE};
+				string[] m_tnames    = {"Integer"};
+				bind("malloc", (self, args, c, out e) => {
+					//VRbJS.debug_state = true;
+					
+					size_t size = (size_t)(int)(double)args[0];
+			
+					void* i = malloc(size);
+					
+					GLib.Value? addr = (int)(i);
+					GLib.Value? ret;
+					
+					VRbJS.debug("alloc");
+										
+					var obj = new JSUtils.Object((JSUtils.Context)c, this.target.js_class, null);
+					obj.set_prop(c, "address", addr);
+					
+					obj.set_prop(c, "binder", Type.from_instance(this.target).name());
+					
+					ret = obj;
+					return obj;
+				}, true, 1, m_types, m_tnames);
+				
+				close();
+			}
+		}
+
+		
+		// Represents a pointer
+		public class FFIPointerBinder : VRbJS.JSUtils.Binder {
+			// core types
+			public static string[] types {get; private set; default = new string[0];}
+			
+			// typedefs
+			public static Gee.HashMap<string, string> typedefs;
+			
+			// typedef what to
+			public static bool typedef(string what, string to) {
+				if (to in types) {
+					if (what in typedefs) {
+						return false;
+					} else {
+						typedefs[what] = to;
+					}
+					
 					return true;
 				}
 				
 				return false;
 			}
 			
-			public static CallbackInfo? get_callback(string name) {
-				if (is_registered(name)) {
-					return callbacks[name];
+			// resolves typedefs/callbacks to core type
+			public static string? resolve_type(string type) {
+				if (type in typedefs) {
+					return resolve_type(typedefs[type]);
+				}
+				
+				if (type in types) {
+					return type;
+				}
+				
+				if (type in CallbackInfo.callbacks.keys) {
+					return type;
 				}
 				
 				return null;
 			}
+			
+			static construct {
+				typedefs = new Gee.HashMap<string, string>();
+				
+				_types += "pointer";
+				_types += "string";
+				_types += "bool";
+				_types += "int32";
+				_types += "uint32";
+				_types += "int8";
+				_types += "uint8";
+				_types += "void";
+			}
+			
+			public FFIPointerBinder() {
+				base("FFIPointer", new FFIPointerBinderKlass());
+				
+				bind("read_int32", (self, args, c, out e) => {
+					//VRbJS.debug_state = true;
+					
+					VRbJS.debug("read_int");
+					int addr = (int)(double)(((JSUtils.Object)self).get_prop(c, "address"));
+					
+					VRbJS.debug("read_int: %d".printf(addr));
+					int i = *(int*)addr.to_pointer();
+					
+					GLib.Value? v = i;
+					
+					return v;
+				}, false, 0);
+				
+				bind("read_string", (self, args, c, out e) => {
+					//VRbJS.debug_state = true;
+					
+					VRbJS.debug("read_int");
+					int addr = (int)(double)(((JSUtils.Object)self).get_prop(c, "address"));
+					
+					VRbJS.debug("read_int: %d".printf(addr));
+					void *i = *(void**)addr.to_pointer();
+					
+					GLib.Value? v = (string)i;
+					
+					return v;
+				}, false, 0);
+				
+				bind("read_bool", (self, args, c, out e) => {
+					//VRbJS.debug_state = true;
+					
+					VRbJS.debug("read_int");
+					int addr = (int)(double)(((JSUtils.Object)self).get_prop(c, "address"));
+					
+					VRbJS.debug("read_int: %d".printf(addr));
+					bool i = *(bool*)addr.to_pointer();
+					
+					GLib.Value? v = i;
+					
+					return v;
+				}, false, 0);	
+				
+				bind("read_pointer", (self, args, c, out e) => {
+					//VRbJS.debug_state = true;
+					
+					VRbJS.debug("read_pointer");
+					int addr = (int)(double)(((JSUtils.Object)self).get_prop(c, "address"));
+					
+					VRbJS.debug("read_pointer: %d".printf(addr));
+					void** i = (void**)addr.to_pointer();
+					
+					GLib.Value? v = ptr2jobj(c, this.js_class, i[0]);
+					
+					return v;
+				}, true, 0);												
+				
+				close();
+			}
 		}
 		
-		public class FFIFuncBinderKlass : Opal.JSUtils.Binder {
+		public static JSCore.Object? ptr2jobj(JSCore.Context c, JSCore.Class klass, void* p) {
+			GLib.Value? addr = (int)(p);
+			
+			var obj = new JSUtils.Object((JSUtils.Context)c, klass, null);
+			obj.set_prop(c, "address", addr);
+			
+			return obj;
+		}
+		
+		public class FFIFuncBinderKlass : VRbJS.JSUtils.Binder {
 			public FFIFuncBinderKlass() {
 				base("FFIFuncClass");
 				
@@ -416,7 +449,7 @@ namespace Opal {
         // FIXME: Maybe extract the ffi bits into thier own class?
         //        
         // Calls dynamic loaded c function
-		public class FFIFuncBinder : Opal.JSUtils.Binder {
+		public class FFIFuncBinder : VRbJS.JSUtils.Binder {
 			public weak JSCore.Context default_context;
 			
 			public GLib.Value? invoke(JSCore.Context c, JSCore.Object self, string module, string symbol, string rt, GLib.Value?[] atypes, GLib.Value?[] args, out JSCore.Value e) {
@@ -468,7 +501,7 @@ namespace Opal {
 				
 				for (var i = 0; i < atypes.length; i++) {
 					if (CallbackInfo.is_registered((string)atypes[i])) {
-					    Opal.debug("Have Callback as argtype");
+					    VRbJS.debug("Have Callback as argtype");
 					
 						a[i] = FFI.pointer;
 					} else {
@@ -487,14 +520,14 @@ namespace Opal {
 							break;
 						
 						default:
-							Opal.debug("INVOKE: 001");
+							VRbJS.debug("INVOKE: 001");
 							raise(c, "Bad Type for arg_types[%d].".printf(i), out e);
 							return null;
 						}
 					}
 				}
 			
-			    Opal.debug("Prep cif");
+			    VRbJS.debug("Prep cif");
 			
 				FFI.call_interface.prepare(out cif, FFI.ABI.DEFAULT, r, a);
 				
@@ -503,7 +536,7 @@ namespace Opal {
 				int?[] int_args    = new int?[0];
 				void*[] ptr_args   = new void*[0];
 				
-				//Opal.debug_state = true;
+				//VRbJS.debug_state = true;
 				
 				for (var i=0; i < args.length; i++) {
 					if (CallbackInfo.is_registered((string)atypes[i])) {
@@ -512,14 +545,14 @@ namespace Opal {
 							return null;
 						}
 						
-						Opal.debug("Create with CallbackInfo: %s".printf((string)atypes[i]));
+						VRbJS.debug("Create with CallbackInfo: %s".printf((string)atypes[i]));
 						
 						var cb = CallbackInfo.get_callback((string)atypes[i]);
 						
 						ptr_args += new FFIClosure(cb.args_types.length, new Data(default_context ?? c, pointer_binder , self, (JSCore.Object)args[i], cb), (args, data) => {								
 							var ret = ((Data)data).call(args);
 							
-							Opal.debug("ClosureCallback: 001 - %s".printf(((Data)data).info.rtype));
+							VRbJS.debug("ClosureCallback: 001 - %s".printf(((Data)data).info.rtype));
 							
 							switch (((Data)data).info.rtype) {
 							case "pointer":
@@ -529,7 +562,7 @@ namespace Opal {
 							case "int32":
 							  return (void*)(int)(double)ret;
 							case "bool":
-							  Opal.debug("ClosureCallback: 002 return bool");
+							  VRbJS.debug("ClosureCallback: 002 return bool");
 							  return (void*)(bool)ret;
 							}
 							
@@ -544,7 +577,7 @@ namespace Opal {
 						case "string":
 							str_args += (string?)args[i];
 							pargs[i] = &str_args[str_args.length-1];
-							Opal.debug("INVOKE: 802");
+							VRbJS.debug("INVOKE: 802");
 							break;
 						
 						case "pointer":
@@ -553,7 +586,7 @@ namespace Opal {
 								// 
 								// returns null; 
 								
-								Opal.debug("CLOSURE: 001");
+								VRbJS.debug("CLOSURE: 001");
 								
 								ptr_args += new FFIClosure(0, new Data(default_context ?? c, pointer_binder, self, (JSCore.Object)args[i]), (args, data) => {								
 									((Data)data).call(args);
@@ -570,7 +603,7 @@ namespace Opal {
 							if (args[i] == null) {
 								ptr_args += ((int)0).to_pointer();
 								pargs[i] = &ptr_args[ptr_args.length-1];
-								Opal.debug("FUCK");
+								VRbJS.debug("FUCK");
 								break;
 							}
 						
@@ -579,7 +612,7 @@ namespace Opal {
 								ptr_args += ((int)(double)ptr).to_pointer();
 								pargs[i] = &ptr_args[ptr_args.length-1];
 							} else {
-								Opal.debug("FUCK:");
+								VRbJS.debug("FUCK:");
 								ptr_args += ((int)0).to_pointer();
 								pargs[i] = &ptr_args[ptr_args.length-1];
 							}
@@ -599,7 +632,7 @@ namespace Opal {
 				
 				GLib.Value? result;
 				call_cif(cif, func, rtype, pargs, out result);
-				Opal.debug("INVOKE: 999");
+				VRbJS.debug("INVOKE: 999");
 				return result;
 			}
 			
@@ -615,9 +648,9 @@ namespace Opal {
 				switch (rtype) {
 				case "string":
 					string o;
-					Opal.debug("CALL: 001");
+					VRbJS.debug("CALL: 001");
 					cif.call<string*>(func, out o, args);
-					Opal.debug("CALL: 002");
+					VRbJS.debug("CALL: 002");
 
 					
 					v = (string)o;
@@ -625,9 +658,9 @@ namespace Opal {
 					
 				case "pointer":
 					void* o;
-					Opal.debug("CALL: 001");
+					VRbJS.debug("CALL: 001");
 					cif.call<void*>(func, out o, args);
-					Opal.debug("CALL: 002");
+					VRbJS.debug("CALL: 002");
 					
 					v = (int)o;
 
@@ -636,7 +669,7 @@ namespace Opal {
 
 				case "bool":
 					bool i;
-					Opal.debug("CALL: bool");
+					VRbJS.debug("CALL: bool");
 					cif.call<bool>(func, out i, args);
 					
 					
@@ -645,9 +678,9 @@ namespace Opal {
 					
 				case "int32":
 					int i = 44;
-					Opal.debug("CALL: 003");
+					VRbJS.debug("CALL: 003");
 					cif.call<int>(func, out i, args);
-					Opal.debug("CALL: 004 - %d".printf(i));
+					VRbJS.debug("CALL: 004 - %d".printf(i));
 
 					
 					v = i;
@@ -655,9 +688,9 @@ namespace Opal {
 					
 				case "void":
 					void* o = null;
-					Opal.debug("CALL: 005 - %d".printf(args.length));
+					VRbJS.debug("CALL: 005 - %d".printf(args.length));
 					cif.call<void*>(func, out o, args);
-					Opal.debug("CALL: 006");
+					VRbJS.debug("CALL: 006");
 
 					
 					v = null;
@@ -675,23 +708,23 @@ namespace Opal {
 				pointer_binder = new FFIPointerBinder();
 				
 				bind("invoke", (self, args, c, out e) => {
-					Opal.debug("FUNC_INVOKE: 001");
+					VRbJS.debug("FUNC_INVOKE: 001");
 					
-					unowned Opal.JSUtils.Object ins = (Opal.JSUtils.Object)self;
+					unowned VRbJS.JSUtils.Object ins = (VRbJS.JSUtils.Object)self;
 					
 					string module = (string)ins.get_prop(c, "module");
 					string symbol = (string)ins.get_prop(c, "symbol");
 					string rtype  = (string)ins.get_prop(c, "return_type");
 					
-					Opal.debug("FUNC_INVOKE: 002 - %s".printf( symbol));
+					VRbJS.debug("FUNC_INVOKE: 002 - %s".printf( symbol));
 					
 					GLib.Value?[] atypes = jsary2vary(c, (JSCore.Object)ins.get_prop(c, "args_types"));
 					
-					Opal.debug("FUNC_INVOKE: 003");
+					VRbJS.debug("FUNC_INVOKE: 003");
 					
 					GLib.Value? result = invoke(c, self, module, symbol, rtype, atypes, args, out e); 
 					
-					Opal.debug("FUNC_INVOKE: 999");
+					VRbJS.debug("FUNC_INVOKE: 999");
 					
 					if (rtype == "pointer") {
 						var obj = new JSUtils.Object((JSUtils.Context)c, pointer_binder.js_class);
@@ -711,7 +744,7 @@ namespace Opal {
 			}
 			
 			public static weak JSCore.Object? init_object(JSCore.Object? iobj, GLib.Value?[] args, JSCore.Context c, out JSCore.Value e) {
-				Opal.debug("FUNC: 001");
+				VRbJS.debug("FUNC: 001");
 			
 			    if (args.length != 4) {
 					raise(c, "FFIFunc.new Expects exactly 4 arguments.", out e);
@@ -730,13 +763,13 @@ namespace Opal {
 					instance = iobj;
 				}
 					
-				unowned JSUtils.Object obj = (Opal.JSUtils.Object)instance;
+				unowned JSUtils.Object obj = (VRbJS.JSUtils.Object)instance;
 				
 				ValueType?[] types = {ValueType.STRING, ValueType.STRING, ValueType.STRING, ValueType.OBJECT};
 				
 				var idx = check_args(args, types);
 				
-				Opal.debug("FC 001");
+				VRbJS.debug("FC 001");
 				
 				if (idx != null) {
 					raise(c, "Expected %s for parameter %d (have %s (%s))".printf(types[(int)idx].to_string(), idx, value_type(args[(int)idx]).to_string(), object_to_string(c,(JSCore.Object)args[(int)idx])), out e);
@@ -754,13 +787,13 @@ namespace Opal {
 					return null;
 				}
 				
-				Opal.debug("FC 002");
+				VRbJS.debug("FC 002");
 				
 				
 				var atypes = jsary2vary(c, (JSCore.Object)args[3]);
 				types = new ValueType?[atypes.length];
 				
-				Opal.debug("FC 003");
+				VRbJS.debug("FC 003");
 				
 				for (var i = 0; i < atypes.length; i++) {
 					types[i] = ValueType.STRING;
@@ -768,7 +801,7 @@ namespace Opal {
 				
 				idx = check_args(atypes, types);
 				
-				Opal.debug("FC 004");
+				VRbJS.debug("FC 004");
 				
 				if (idx != null) {
 					raise(c, "Expects <String|Symbol> as value in arg_types[%d]".printf(idx), out e);
@@ -788,7 +821,7 @@ namespace Opal {
 				obj.set_prop(c, "args_types",  args[3]);
 
 
-				Opal.debug("FUNC: 999");
+				VRbJS.debug("FUNC: 999");
 				
 				return instance;		
 			}

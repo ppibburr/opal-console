@@ -118,14 +118,15 @@ OPTIONS = {
   w: "run in headless WebKit",
   c: "Transpile ruby source to JS",
   j: "Execute inline js",
-  s: "include stdlib"
+  s: "include stdlib",
+  "d TARGET" => "dump the bridge code of an extension TARGET"
 }
 
 
 def usage(msg="");
   puts msg
 
-  puts "opala - A ruby source runner/transpiler via Opal in JavaScriptCore\n\n"
+  puts "opala - A ruby source runner/transpiler via VRbJS in JavaScriptCore\n\n"
   
   puts "Usage:"
   puts "opala [OPTIONs] [PATH|CODE]\n\n"
@@ -137,21 +138,22 @@ def usage(msg="");
 end;
 
 begin
-  opts = Getopt::Std.getopts("vhwcejs")
+  PROGRAM = Program.new()
+  opts = Getopt::Std.getopts("d:vhwcejs")
 
   $0 = "(file)"
   
-  unless opts['v'] or opts['h']
+  unless opts['v'] or opts['h'] or opts['d']
     if opts['c']
       if opts.length != 1
         raise "Too many options passed. -c takes 0 options"
       end
      
-      source = read(ARGV.last)
+      source = PROGRAM.read(ARGV.last)
      
       `Opal.require('opal-parser');`
      
-      write(ARGV.last+".js", `Opal.compile(#{source})`)
+      PROGRAM.write(ARGV.last+".js", `Opal.compile(#{source})`)
     else
       $0 = "(file)"
       parser = true
@@ -162,10 +164,10 @@ begin
         parser = false
       else
         $0 = ARGV.shift
-        code = read($0)
+        code = PROGRAM.read($0)
         
         ARGV.each do |a|
-          `append_argv(#{a});`
+          PROGRAM.append_argv(a);
         end        
         
         if $0.split(".").last != "rb"
@@ -175,15 +177,16 @@ begin
       
       # puts "run(#{code}, #{!!opts['w']}, #{parser}, #{$0});"
       
-      `run(#{code}, #{!!opts['w']}, #{parser}, #{$0}, #{opts['s']!=nil});`
+      PROGRAM.run(code, !!opts['w'], parser, $0, opts['s']!=nil);
     end
   else
     if opts['v']
       puts VERSION
-    end
-    
-    if opts['h']
+    elsif opts['h']
       usage()
+    
+    elsif opts['d']
+      puts PROGRAM.dump(opts['d'])
     end
   end
 rescue => e

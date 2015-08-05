@@ -1,18 +1,35 @@
-namespace Opala {
-	using Opal;
+namespace VRbJS {
 	using JSUtils;
-	using WebKit;
 	
-	public const string OPALA_VERSION = "0.1.0";
+#if WEBKIT
+	using WebKit;
+#endif
+	public const string VRBJS_VERSION = "0.1.0";
 	
 	private Program program;
 	
 	public class Program : Runtime {
+		public class ProgramBinderKlass : JSUtils.Binder {
+	      public ProgramBinderKlass() {
+			  base("ProgramBinderClass");
+			  
+			  bind("apply", (ins, args, c, out e) => {
+				  var o = new JSCore.Object(c,target.js_class,null);
+				  GLib.Value? n = Type.from_instance(target).name();
+				  ((JSUtils.Object)o).set_prop(c, "binder", n);
+				 GLib.Value? v = o;
+				 return v; 
+			  });
+			  
+			  close();
+		  }
+		}		
+		
 		public class ProgramBinder : JSUtils.Binder {
 			public Program program {get;private set;}
 			
 			public ProgramBinder() {
-				base("Program");
+				base("Program", new ProgramBinderKlass());
 				
 				this.program = program;
 				
@@ -21,6 +38,12 @@ namespace Opala {
 					
 					return null;
 				});
+				
+				bind("dump", (self, args, c, out e) => {
+					var what = (string)args[0];
+					GLib.Value? res = program.dump(what);
+					return res;
+				});			
 
 				bind("run", (self, args, c, out e) => {
 					var code     = (string)args[0];
@@ -29,12 +52,16 @@ namespace Opala {
 					var path     = (string)args[3];
 					var stdlib   = args[4] != null ? (bool)args[4] : false;
 					
-					//Opal.debug(parser ? "PARSER!\n" : "NO_PARSE\n");
+					//VRbJS.debug(parser ? "PARSER!\n" : "NO_PARSE\n");
 					
 					program.set_file(path);
 					
 					if (headless) {
+#if WEBKIT
 						program.execute_headless(code, parser, stdlib);
+#else
+						print("Error: opala not compiled with '-D WEBKIT'\n");
+#endif
 					} else {
 						program.execute(code, parser, true, stdlib);
 					}
@@ -82,11 +109,11 @@ namespace Opala {
 			public void init(Program prog) {
 				this.program = prog;
 				
-				Opal.debug("PROGRAM_INIT: 001");
+				VRbJS.debug("PROGRAM_INIT: 001");
 
 				init_global(prog.context);
-				
-				Opal.debug("PROGRAM_INIT: 002");
+						
+				VRbJS.debug("PROGRAM_INIT: 002");
 			}			    
 		}
 		
@@ -115,15 +142,25 @@ namespace Opala {
 		public Program(string[]? argv = null) {
 			var binder = new ProgramBinder();
 			
-			var c = new JSUtils.Context(binder.js_class);
-			
-			base(false, argv, c);
-			
+			base(true, argv);
+	
+	        add_toplevel_class(binder);
+	
 			binder.init(this);
 			
 			init_console();
+	
+			if (!require("../../tools/native")) {
+				print("CRITICAL: missing native.rb[.js] file\n");
+			}	
+	
+			if (!require("../../tools/program_lib")) {
+				print("CRITICAL: missing program_lib.rb[.js] file\n");
+			}
 			
-			context.exec(WRAPPER+PROGRAM);			
+			if (!require("../../tools/prog")) {
+				print("CRITICAL: missing vrbjs.rb[.js] file\n");
+			}							
 		}
 		
 		public string[] rargv {get; private set; default = new string[0];}
@@ -135,6 +172,12 @@ namespace Opala {
 		
 		public void set_file(string path) {
 			this._path = path;
+		}
+		
+		public string? dump(string what) {
+			var binder = load_so(what);
+
+			return binder.generate_bridge_code(context, null, null);
 		}
 		
 		public void execute(string code, bool parser=false, bool console = false, bool stdlib = false, JSUtils.Context? ctx = null) {
@@ -150,7 +193,7 @@ namespace Opala {
 			 opal.context.exec(code);
 		}
 			
-
+#if WEBKIT
 		public void execute_headless(string code, bool parser=false, bool stdlib = false) {
 			unowned string[] argv = this.argv;
 			Gtk.init(ref argv);
@@ -163,7 +206,7 @@ namespace Opala {
 			settings.enable_universal_access_from_file_uris = true;
 			
 			webview.window_object_cleared.connect( (f,c) => {
-					execute(code, parser, false, stdlib, (Opal.JSUtils.Context)c);
+					execute(code, parser, false, stdlib, (VRbJS.JSUtils.Context)c);
 					Gtk.main_quit();
 			});
 			
@@ -171,94 +214,51 @@ namespace Opala {
 
 			Gtk.main();	
 		}			
+#endif
 	}
+
 	
 	public class Runner : Runtime {
-		public class OpalaPrototype : JSUtils.Binder {
-		  public OpalaPrototype() {
-			  base("Opala");
+		public class VRbJSPrototype : JSUtils.Binder {
+		  public Runner? runtime;
+		  public VRbJSPrototype(Runner? r) {
+			  base("VRbJS");
 			  
 			  bind("set_debug", (self, args, c, out e) => {
 				 bool val = (bool)args[0];
 				 
-				 Opal.debug_state = val;
+				 VRbJS.debug_state = val;
 			
-				 Opal.debug("Opala.set_debug(%s)".printf(val ? "true" : "false"));
+				 VRbJS.debug("VRbJS.set_debug(%s)".printf(val ? "true" : "false"));
 				 return args[0]; 
 			  });
+			  
+			  bind("require", (self, args, c, out e) => {
+				 string what = (string)args[0]; 
+				 VRbJS.debug(what);
+				 GLib.Value? v = this.runtime.require(what);
+				 
+				 return v;
+			  }, false, 1);
 			  
 			  close();
 		  }	
 		}
 				
-		public OpalaPrototype pt;
+		public VRbJSPrototype pt;
 		
-		public const string REM_CORE_FILE = """(function(Opal) {
-  Opal.dynamic_require_severity = "error";
-  var self = Opal.top, $scope = Opal, nil = Opal.nil, $breaker = Opal.breaker, $slice = Opal.slice;
-
-  Opal.add_stubs(['$send']);
-  return $scope.get('Object').$send("remove_const", $scope.get('File'))
-})(Opal);""";
 		
-		public const string OPALA_NATIVE_WRAPPER = """!function(e){e.dynamic_require_severity="error";var t=e.top,n=e.nil,a=(e.breaker,e.slice),i=e.module,r=e.klass;return e.add_stubs(["$new","$set_native_type","$native_type","$allocate","$send","$_native=","$attr_accessor"]),function(t){var $=i(t,"Opala"),s=($.$$proto,$.$$scope);e.defs($,"$Interface",function(e){var t=n;return t=s.get("Class").$new(s.get("Opala").$$scope.get("Object")),t.$set_native_type(e),t}),function(t,i){function $(){}{var s,l=$=r(t,i,"Object",$);l.$$proto,l.$$scope}return e.defs(l,"$inherited",function(e){var t=this;return e.$set_native_type(t.$native_type())}),e.defs(l,"$set_native_type",function(e){var t=this;return t.native_type=e}),e.defs(l,"$native_type",function(){var e=this;return null==e.native_type&&(e.native_type=n),e.native_type}),e.defs(l,"$new",function(e){var t,i,r=this,$=n;return e=a.call(arguments,0),$=r.$allocate(),$.$send("initialize"),t=[r.$native_type().apply(Object.create(null),e)],i=$,i["$_native="].apply(i,t),t[t.length-1],$}),e.defs(l,"$wrap",s=function(e,t){var i,r,$=this,l=(s.$$p,n);return t=a.call(arguments,1),s.$$p=null,l=$.$allocate(),i=[e],r=l,r["$_native="].apply(r,i),i[i.length-1],l}),l.$attr_accessor("_native")}($,null)}(t)}(Opal);""";
+		public const string NATIVE_WRAPPER = """!function(e){e.dynamic_require_severity="error";var t=e.top,n=e.nil,a=(e.breaker,e.slice),i=e.module,r=e.klass;return e.add_stubs(["$new","$set_native_type","$native_type","$allocate","$send","$_native=","$attr_accessor"]),function(t){var $=i(t,"VRbJS"),s=($.$$proto,$.$$scope);e.defs($,"$Interface",function(e){var t=n;return t=s.get("Class").$new(s.get("VRbJS").$$scope.get("Object")),t.$set_native_type(e),t}),function(t,i){function $(){}{var s,l=$=r(t,i,"Object",$);l.$$proto,l.$$scope}return e.defs(l,"$inherited",function(e){var t=this;return e.$set_native_type(t.$native_type())}),e.defs(l,"$set_native_type",function(e){var t=this;return t.native_type=e}),e.defs(l,"$native_type",function(){var e=this;return null==e.native_type&&(e.native_type=n),e.native_type}),e.defs(l,"$new",function(e){var t,i,r=this,$=n;return e=a.call(arguments,0),$=r.$allocate(),$.$send("initialize"),t=[r.$native_type().apply(Object.create(null),e)],i=$,i["$_native="].apply(i,t),t[t.length-1],$}),e.defs(l,"$wrap",s=function(e,t){var i,r,$=this,l=(s.$$p,n);return t=a.call(arguments,1),s.$$p=null,l=$.$allocate(),i=[e],r=l,r["$_native="].apply(r,i),i[i.length-1],l}),l.$attr_accessor("_native")}($,null)}(t)}(Opal);""";
 
 		
-		public Runner(owned bool parser, string[]? argv = null, bool console = false, bool stdlib = false, JSUtils.Context? ctx = null) {
-            if (stdlib && !FileUtils.test("opala-stdlib", FileTest.EXISTS)) {
-				parser = true;
-			}
-          
-          
+		public Runner(owned bool parser, string[]? argv = null, bool console = false, bool stdlib = false, JSUtils.Context? ctx = null) {          
 			base(parser, argv, ctx);
+			context.exec(NATIVE_WRAPPER);
 			
-			this.pt = new OpalaPrototype();
+			this.pt = new VRbJSPrototype(this);
+			pt.runtime = this;
 			pt.create_toplevel_module(context);
-			
-			if (stdlib) {
-				context.exec(REM_CORE_FILE + OPALA_NATIVE_WRAPPER);				
-				var klass = new Opal.StandardLibrary.JFile();
-				add_toplevel_class(klass);
-				
-				if (!FileUtils.test("opala-stdlib", FileTest.EXISTS)) {
-					var js = klass.prototype.compile_bridge_code(context, klass, null);
-					print("\n\n\n\n\n%s\n\n\n\n", js);
-					context.exec(js);
-				} else {
-					string code;
-					FileUtils.get_contents("opala-stdlib/file.rb.js", out code, null);
-					context.exec(code);
-				}
-				//Opal.debug_state = true;
-				var funcb = new Opal.JsFFI.FFIFuncBinder();
-				funcb.default_context = context;
-				
-				add_toplevel_class(funcb);
-				add_toplevel_class(funcb.pointer_binder);
-				
-				if (!FileUtils.test("opala-stdlib/ffi_func.rb.js", FileTest.EXISTS)) {
-					var js = funcb.prototype.compile_bridge_code(context, funcb, null);
-					Opal.debug("\n\n\n\n\n%s\n\n\n\n".printf(js));
-					context.exec(js);
-				} else {
-					string code;
-					FileUtils.get_contents("opala-stdlib/ffi_func.rb.js", out code, null);
-					context.exec(code);
-				}	
-				
-				if (!FileUtils.test("opala-stdlib/ffi_pointer.rb.js", FileTest.EXISTS)) {
-					var js = funcb.pointer_binder.prototype.compile_bridge_code(context, funcb.pointer_binder, null);
-					//Opal.debug_state = true;
-					Opal.debug("\n\n\n\n\n%s\n\n\n\n".printf(js));
-					//Opal.debug_state = false;					
-					context.exec(js);
-				} else {
-					string code;
-					FileUtils.get_contents("opala-stdlib/ffi_pointer.rb.js", out code, null);
-					context.exec(code);
-				}						
-				
-			}
+
 			
 			if (console) {
 				init_console();
@@ -269,6 +269,6 @@ namespace Opala {
 
 
 void main(string[] argv) {
-  //Opal.debug_state = true;sd
-  new Opala.Program(argv);
+  //VRbJS.debug_state = true;sd
+  new VRbJS.Program(argv);
 }
