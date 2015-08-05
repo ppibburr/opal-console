@@ -10,6 +10,8 @@ install:
 	cp -f vrbjs-0.1.deps /usr/share/vala/vapi/
 	cp -f vrbjs.h /usr/include/
 	cp -f vrbjs-0.1.pc /usr/lib/pkgconfig/
+	mkdir -p /usr/lib/vrbjs/0.1.0
+	cp -rf lib/* /usr/lib/vrbjs/0.1.0/
 	
 uninstall:
 	rm -rf /usr/lib/libvrbjs-0.1.so
@@ -17,3 +19,4 @@ uninstall:
 	rm -rf /usr/share/vala/vrbjs-0.1.deps	
 	rm -rf /usr/include/vrbjs.h    
 	rm -rf /usr/lib/pkgconfig/vrbjs-0.1.pc	
+	rm -rf /usr/lib/vrbjs/0.1.0

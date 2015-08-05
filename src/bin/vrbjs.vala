@@ -150,16 +150,16 @@ namespace VRbJS {
 			
 			init_console();
 	
-			if (!require("../../tools/native")) {
+			if (!require("native")) {
 				print("CRITICAL: missing native.rb[.js] file\n");
 			}	
 	
-			if (!require("../../tools/program_lib")) {
+			if (!require("program_lib")) {
 				print("CRITICAL: missing program_lib.rb[.js] file\n");
 			}
 			
-			if (!require("../../tools/prog")) {
-				print("CRITICAL: missing vrbjs.rb[.js] file\n");
+			if (!require("program_exec")) {
+				print("CRITICAL: missing program_exec.rb[.js] file\n");
 			}							
 		}
 		
