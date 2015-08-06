@@ -242,6 +242,8 @@ namespace VRbJS {
 						}
 					}
 				}
+			} else {
+				VRbJS.debug(@"Says we have $path");
 			}
 			
 			if (!f_exist(path)) {
@@ -254,7 +256,7 @@ namespace VRbJS {
 			var split = name.split(".");
 			name = split[0];
 			
-			VRbJS.debug("FIND_SO: %s\n".printf(name));
+			VRbJS.debug("FIND_SO: %s\n".printf(path));
 			
 			if ("so" in split) {
 				
@@ -267,12 +269,14 @@ namespace VRbJS {
 			var fun    = (init_lib)dlsym(handle, @"$(name)_init");
 			
 			var binders = fun(this);
-
+            
+            VRbJS.debug(@"so $path init-ed");
+            
 			return binders;
 		}	
 		
 		public bool f_exist(string path) {
-			return FileUtils.test (path, FileTest.EXISTS);
+			return FileUtils.test (path, FileTest.EXISTS) && !FileUtils.test (path, FileTest.IS_DIR);
 		}	
 		
 		public class LibInfo {

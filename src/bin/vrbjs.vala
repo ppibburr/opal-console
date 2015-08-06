@@ -189,6 +189,7 @@ namespace VRbJS {
             string code = "";
 
 			foreach (var binder in info.interfaces) {
+				VRbJS.debug("adding iface: %s".printf(Type.from_instance(binder).name()));
 				code += "\n"+binder.generate_bridge_code(context, null, null);
 			}
 			
