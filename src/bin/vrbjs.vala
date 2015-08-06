@@ -157,7 +157,9 @@ namespace VRbJS {
 
 			pt.create_toplevel_module(context);
 
-			require("vrbjs", false);	
+			if (!require("vrbjs", false)) {
+				print("CRITICAL: missing vrbjs.rb[.js] file\n");
+			}	
 	
 			if (!require("native")) {
 				print("CRITICAL: missing native.rb[.js] file\n");
@@ -245,6 +247,7 @@ namespace VRbJS {
 				    var obj = (VRbJS.JSUtils.Object)ctx.get_global_object();
 				    GLib.Value? v = (int)(void*)webview;
 				    
+				    // with FFI great things can happen
 				    obj.set_prop(ctx, "_vrbjs_webview_address", v);
 					
 					execute(code, parser, false, debug, require, ctx);
@@ -300,14 +303,18 @@ namespace VRbJS {
 				VRbJS.debug_state = true;
 			}
 			
-			require("native", false);
+			if (!require("native", false)) {
+				print("CRITICAL: missing native.rb[.js] file\n");
+			}
 			
 			this.pt = new VRbJSPrototype();
 			pt.runtime = this;
 
 			pt.create_toplevel_module(context);
 
-			require("vrbjs", false);
+			if (!require("vrbjs", false)) {
+				print("CRITICAL: missing vrbjs.rb[.js] file\n");
+			}
 
 			if (console) {
 				init_console();
