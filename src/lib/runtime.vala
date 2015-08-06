@@ -111,14 +111,15 @@ namespace VRbJS {
 		}
 		
 		public bool require(string name, bool no_so=false) {
+			//VRbJS.debug_state = true;
 			VRbJS.debug("in require\n");
 			string path = name;
 			bool needs_parser = false;
 			
 			if (load_so(name) == null || no_so) {
 				VRbJS.debug("no so\n");
-				if (!f_exist(path)) {
-					if (!f_exist(path)) {
+				if (!f_exist(path) || (!(".rb" in path) || !(".js" in path))) {
+					if (!f_exist(path) || (!(".rb" in path) || !(".js" in path))) {
 						path = @"./$(name).rb.js";	
 						if (!f_exist(path)) {
 							path = @"./$(name).rb";			
@@ -163,13 +164,22 @@ namespace VRbJS {
 				needs_parser = true;
 			}
 			
+			if ("rb" in exts || "js" in exts) {
+				
+			} else {
+				return false;
+			}
+			
 			if (needs_parser) {
 				load(path);
 				return true;
 			}	
 			
+			
+			
 			var code = "";
 			FileUtils.get_contents(path, out code, null);
+			
 			context.exec(code);
 			
 			return true;
@@ -200,13 +210,14 @@ namespace VRbJS {
 			return klass;
 		}	
 		
-		public delegate VRbJS.JSUtils.Binder? init_lib(VRbJS.Runtime self, void* q);
+		[CCode (has_target = false)]
+		public delegate LibInfo? init_lib(VRbJS.Runtime self);
 	    public static string? lib_dir;
 	    static construct {
-			lib_dir = GLib.Environment.get_variable("VRBJS_LIB_DIR") ?? "./vrbjs";			
+			lib_dir = GLib.Environment.get_variable("VRBJS_LIB_DIR") ?? @"/usr/lib/vrbjs/$(VRbJS.VERSION)";			
 		}	
 		
-		public VRbJS.JSUtils.Binder? load_so(owned string name) {
+		public LibInfo? load_so(owned string name) {
 			string path = name;
 			
 			if (!f_exist(path)) {
@@ -215,12 +226,15 @@ namespace VRbJS {
 					if (!f_exist(path)) {			
 						path = @"./$(name)";	
 						if (!f_exist(path)) {	
-							path = @"./$(name).so";
+							
 							if (!f_exist(path)) {
 								path = @"$(lib_dir)/$(name)";
+								
 								if (!f_exist(path)) {
 									path = @"$(lib_dir)/$(name).so";
+							   
 									if (!f_exist(path)) {
+									
 										path = @"$(lib_dir)/$(name)/$(name).so";
 									}							
 								}				
@@ -239,16 +253,31 @@ namespace VRbJS {
 			
 			var split = name.split(".");
 			name = split[0];
+			
+			if ("so" in split) {
+				
+			} else {
+				return null;
+			}
+			
 			VRbJS.debug(@"so: $name - $path");
 			var handle = dlopen(path, RTLD_LAZY);
 			var fun    = (init_lib)dlsym(handle, @"$(name)_init");
 			
-			return fun(this,null);
+			var binders = fun(this);
+
+			return binders;
 		}	
 		
 		public bool f_exist(string path) {
 			return FileUtils.test (path, FileTest.EXISTS);
 		}	
+		
+		public class LibInfo {
+			public Binder?[] interfaces;
+			public string? iface_name = null;
+			public string? parent_iface = null;
+		}
 	
 	}
 }

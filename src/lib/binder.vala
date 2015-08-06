@@ -23,6 +23,7 @@ namespace VRbJS {
 			public JSCore.Class js_class;
 			public Binder? prototype;
 			public Binder? target;
+			public string? rb_name = null;
 			
 			public Binder(string class_name, Binder? prototype = null) {
 				this.definition = JSCore.ClassDefinition();
@@ -76,11 +77,11 @@ namespace VRbJS {
 				
 					
 					callAsFunction = (c, fun, self, a, out e) => {
-						print("Hahaha\n");
+						//print("Hahaha\n");
 						var static_binder = (string?)((JSUtils.Object)self).get_prop(c, "static_binder");
 						var tname         = (string?)((JSUtils.Object)fun).get_prop(c, "name");
 						var binder        = (string?)((JSUtils.Object)self).get_prop(c, "binder");
-						print("EOHahaha\n");
+						//print("EOHahaha\n");
 								
 						var args = new GLib.Value?[0];
 						foreach (unowned JSCore.ConstValue v in a) {
@@ -227,7 +228,7 @@ namespace VRbJS {
 				
 				GLib.Value v = Type.from_instance(this).name();
 				m.set_property(c, new JSCore.String.with_utf8_c_string("static_binder"), gval2jval(c,v), JSCore.PropertyAttribute.ReadOnly, null);
-				m.set_property(c, new JSCore.String.with_utf8_c_string("binder"), gval2jval(c,v), JSCore.PropertyAttribute.ReadOnly, null);
+				//m.set_property(c, new JSCore.String.with_utf8_c_string("binder"), gval2jval(c,v), JSCore.PropertyAttribute.ReadOnly, null);
 			    				
 				o.set_property(c, new JSCore.String.with_utf8_c_string(this.definition.className), m, JSCore.PropertyAttribute.ReadOnly, null);
 			    return m;
@@ -308,14 +309,33 @@ namespace VRbJS {
 				return (string)jval2gval(c, ((JSUtils.Context)c).exec("""Opal.compile("%s");""".printf(code.escape(null))).native, out e);
 			}	
 			
+			public enum BinderType {
+				CLASS,
+				MODULE;
+			}
+			
+			public BinderType type = BinderType.CLASS;
+			
 			public string generate_bridge_code(JSCore.Context c, owned Binder? klass = null, out JSCore.Value e) {
 				if (klass != null) {
 					this.target = klass;
 				}
 				
-				unowned string name = this.target.definition.className;
+				var module = false;
 				
-				var code = @"class $(name) < VRbJS.Interface(`$(name)`)\n";
+				if (type == BinderType.MODULE) {
+					module = true;
+				}
+				
+			
+				unowned string n_name = module ? definition.className : this.target.definition.className;
+				unowned string name = module ? (rb_name ?? n_name) : (this.target.rb_name ?? n_name);
+				
+				var code = @"$(module ? "module" : "class") $(name) $( module ? "" : @"< VRbJS.Interface(`$(n_name)`)")\n";
+				
+				if (module) {
+					code += @"@native_type = `$(name)`";
+				}
 				
 				Gee.HashMap<string, BCB>? map = ((Gee.HashMap<string, BCB>?)Type.from_instance(this).get_qdata(Quark.from_string("map")));
 				
@@ -330,6 +350,11 @@ namespace VRbJS {
 						code += @"\n  def self.$(val.key) *o,&b\n    o.push(b) if b\n    $((val.key in constructors) ? "wrap " : "")`#{native_type}['$(val.key)'].apply(#{native_type}, #{o})` \n  end\n";
 					}
 				}						
+				
+				if (module) {
+					code += "end\n";
+					return code;
+				}
 				
 				map = ((Gee.HashMap<string, BCB>?)Type.from_instance(this.target).get_qdata(Quark.from_string("map")));
 				

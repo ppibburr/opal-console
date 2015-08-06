@@ -4,7 +4,7 @@ namespace VRbJS {
 #if WEBKIT
 	using WebKit;
 #endif
-	public const string VRBJS_VERSION = "0.1.0";
+
 	
 	private Program program;
 	
@@ -150,6 +150,13 @@ namespace VRbJS {
 			
 			init_console();
 	
+			var pt = new VRbJSPrototype();
+			pt.runtime = this;
+
+			pt.create_toplevel_module(context);
+
+			require("vrbjs", false);	
+	
 			if (!require("native")) {
 				print("CRITICAL: missing native.rb[.js] file\n");
 			}	
@@ -175,9 +182,30 @@ namespace VRbJS {
 		}
 		
 		public string? dump(string what) {
-			var binder = load_so(what);
+			var info = load_so(what);
 
-			return binder.generate_bridge_code(context, null, null);
+            string code = "";
+
+			foreach (var binder in info.interfaces) {
+				code += "\n"+binder.generate_bridge_code(context, null, null);
+			}
+			
+			if (info.iface_name != null) {
+				var split = code.split("\n");
+				
+				var buff = "";
+				foreach (var l in split) {
+					buff += "  "+l+"\n";
+				}
+				
+				code = info.iface_name != null ? @"module $(info.iface_name)\n" : "";
+				
+				code += buff;
+				
+				code += "end\n";
+			}
+			
+			return code;
 		}
 		
 		public void execute(string code, bool parser=false, bool console = false, bool stdlib = false, JSUtils.Context? ctx = null) {
@@ -217,49 +245,50 @@ namespace VRbJS {
 #endif
 	}
 
+	public class VRbJSPrototype : JSUtils.Binder {
+	  public Runtime? runtime;
+	  public VRbJSPrototype() {
+		  base("VRbJS");
+
+		  type = BinderType.MODULE;
+		  
+		  bind("set_debug", (self, args, c, out e) => {
+			 bool val = (bool)args[0];
+			 
+			 VRbJS.debug_state = val;
+		
+			 VRbJS.debug("VRbJS.set_debug(%s)".printf(val ? "true" : "false"));
+			 return args[0]; 
+		  });
+		  
+		  bind("require", (self, args, c, out e) => {
+			 string what = (string)args[0]; 
+			 VRbJS.debug(what);
+			 GLib.Value? v = this.runtime.require(what);
+			 
+			 return v;
+		  }, false, 1);
+		  
+		  close();
+	  }	
+	}	
+	
 	
 	public class Runner : Runtime {
-		public class VRbJSPrototype : JSUtils.Binder {
-		  public Runner? runtime;
-		  public VRbJSPrototype(Runner? r) {
-			  base("VRbJS");
-			  
-			  bind("set_debug", (self, args, c, out e) => {
-				 bool val = (bool)args[0];
-				 
-				 VRbJS.debug_state = val;
-			
-				 VRbJS.debug("VRbJS.set_debug(%s)".printf(val ? "true" : "false"));
-				 return args[0]; 
-			  });
-			  
-			  bind("require", (self, args, c, out e) => {
-				 string what = (string)args[0]; 
-				 VRbJS.debug(what);
-				 GLib.Value? v = this.runtime.require(what);
-				 
-				 return v;
-			  }, false, 1);
-			  
-			  close();
-		  }	
-		}
-				
 		public VRbJSPrototype pt;
-		
-		
-		public const string NATIVE_WRAPPER = """!function(e){e.dynamic_require_severity="error";var t=e.top,n=e.nil,a=(e.breaker,e.slice),i=e.module,r=e.klass;return e.add_stubs(["$new","$set_native_type","$native_type","$allocate","$send","$_native=","$attr_accessor"]),function(t){var $=i(t,"VRbJS"),s=($.$$proto,$.$$scope);e.defs($,"$Interface",function(e){var t=n;return t=s.get("Class").$new(s.get("VRbJS").$$scope.get("Object")),t.$set_native_type(e),t}),function(t,i){function $(){}{var s,l=$=r(t,i,"Object",$);l.$$proto,l.$$scope}return e.defs(l,"$inherited",function(e){var t=this;return e.$set_native_type(t.$native_type())}),e.defs(l,"$set_native_type",function(e){var t=this;return t.native_type=e}),e.defs(l,"$native_type",function(){var e=this;return null==e.native_type&&(e.native_type=n),e.native_type}),e.defs(l,"$new",function(e){var t,i,r=this,$=n;return e=a.call(arguments,0),$=r.$allocate(),$.$send("initialize"),t=[r.$native_type().apply(Object.create(null),e)],i=$,i["$_native="].apply(i,t),t[t.length-1],$}),e.defs(l,"$wrap",s=function(e,t){var i,r,$=this,l=(s.$$p,n);return t=a.call(arguments,1),s.$$p=null,l=$.$allocate(),i=[e],r=l,r["$_native="].apply(r,i),i[i.length-1],l}),l.$attr_accessor("_native")}($,null)}(t)}(Opal);""";
-
 		
 		public Runner(owned bool parser, string[]? argv = null, bool console = false, bool stdlib = false, JSUtils.Context? ctx = null) {          
 			base(parser, argv, ctx);
-			context.exec(NATIVE_WRAPPER);
 			
-			this.pt = new VRbJSPrototype(this);
+			require("native", false);
+			
+			this.pt = new VRbJSPrototype();
 			pt.runtime = this;
+
 			pt.create_toplevel_module(context);
 
-			
+			require("vrbjs", false);
+
 			if (console) {
 				init_console();
 			}
