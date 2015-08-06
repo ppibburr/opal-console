@@ -46,11 +46,13 @@ namespace VRbJS {
 				});			
 
 				bind("run", (self, args, c, out e) => {
-					var code     = (string)args[0];
-					var parser   = (bool)args[2];
-					var headless = (bool)args[1];
-					var path     = (string)args[3];
-					var stdlib   = args[4] != null ? (bool)args[4] : false;
+					var code      = (string)args[0];
+					var parser    = (bool)args[2];
+					var headless  = (bool)args[1];
+					var debug     = (bool)args[3];
+					var exit      = (bool)args[4];
+					var path      = (string)args[5];
+					var require   = jsary2vary(c, (JSCore.Object)args[6]);
 					
 					//VRbJS.debug(parser ? "PARSER!\n" : "NO_PARSE\n");
 					
@@ -58,12 +60,12 @@ namespace VRbJS {
 					
 					if (headless) {
 #if WEBKIT
-						program.execute_headless(code, parser, stdlib);
+						program.execute_headless(code, parser, debug, exit, require);
 #else
 						print("Error: opala not compiled with '-D WEBKIT'\n");
 #endif
 					} else {
-						program.execute(code, parser, true, stdlib);
+						program.execute(code, parser, true, debug, require);
 					}
 					
 					return null;
@@ -208,8 +210,8 @@ namespace VRbJS {
 			return code;
 		}
 		
-		public void execute(string code, bool parser=false, bool console = false, bool stdlib = false, JSUtils.Context? ctx = null) {
-			 var opal = new Runner(parser, this.rargv, console, stdlib, ctx);
+		public void execute(string code, bool parser=false, bool console = false, bool debug = false, GLib.Value?[]? require = null, JSUtils.Context? ctx = null) {
+			 var opal = new Runner(parser, this.rargv, console, debug, require, ctx);
 			 
 			 if (parser) {
 			   // Expect 'code' as Ruby
@@ -222,7 +224,7 @@ namespace VRbJS {
 		}
 			
 #if WEBKIT
-		public void execute_headless(string code, bool parser=false, bool stdlib = false) {
+		public void execute_headless(string code, bool parser=false, bool debug = false, bool exit = false, GLib.Value?[]? require = null) {
 			unowned string[] argv = this.argv;
 			Gtk.init(ref argv);
 			var webview = new WebKit.WebView();
@@ -232,13 +234,26 @@ namespace VRbJS {
 			settings.enable_plugins = true;
 			settings.enable_scripts = true;
 			settings.enable_universal_access_from_file_uris = true;
+			settings.enable_file_access_from_file_uris = true;
 			
+			// window-object-cleared: does not fire from file:/// uri's unless we do this
+			webview.get_main_frame().get_global_context();			
+
 			webview.window_object_cleared.connect( (f,c) => {
-					execute(code, parser, false, stdlib, (VRbJS.JSUtils.Context)c);
-					Gtk.main_quit();
+				    unowned JSUtils.Context ctx = (VRbJS.JSUtils.Context)c;
+				    var obj = (VRbJS.JSUtils.Object)ctx.get_global_object();
+				    GLib.Value? v = (int)(void*)webview;
+				    
+				    obj.set_prop(ctx, "_vrbjs_webview_address", v);
+					
+					execute(code, parser, false, debug, require, ctx);
+					
+					if (exit) {
+						Gtk.main_quit();
+					}
 			});
 			
-			webview.open("file:///foo.html");
+			webview.open(@"file://$(Runtime.lib_dir)/html/default.html");
 
 			Gtk.main();	
 		}			
@@ -277,8 +292,12 @@ namespace VRbJS {
 	public class Runner : Runtime {
 		public VRbJSPrototype pt;
 		
-		public Runner(owned bool parser, string[]? argv = null, bool console = false, bool stdlib = false, JSUtils.Context? ctx = null) {          
+		public Runner(owned bool parser, string[]? argv = null, bool console = false, bool debug = false, GLib.Value?[]? req_libs = null, JSUtils.Context? ctx = null) {          
 			base(parser, argv, ctx);
+			
+			if (debug) {
+				VRbJS.debug_state = true;
+			}
 			
 			require("native", false);
 			
@@ -292,6 +311,13 @@ namespace VRbJS {
 			if (console) {
 				init_console();
 			}
+			
+			if (req_libs != null) {
+				foreach (var r in req_libs) {
+					VRbJS.debug("REQUIRE: %s\n".printf((string)r));
+					require((string)r);
+				}
+			}			
 		}
 	}
 }

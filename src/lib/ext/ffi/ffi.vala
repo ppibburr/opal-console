@@ -26,6 +26,9 @@ namespace FFI {
 			this.func = func;
 			this.info = cb;
 			this.pointer_binder = pointer_binder;
+			self.protect(c);
+			func.protect(c);
+			ref();
 		}
 		
 		public GLib.Value? call(void*[] args) {
@@ -834,6 +837,7 @@ namespace FFI {
 	public static VRbJS.Runtime.LibInfo? init(Runtime r) {
 		var func = new FFIFuncBinder();
 		func.default_context = r.context;
+		r.context.retain();
 		
 		r.add_toplevel_class(func);
 		r.add_toplevel_class(func.pointer_binder);

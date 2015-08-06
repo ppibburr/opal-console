@@ -245,14 +245,16 @@ namespace VRbJS {
 			}
 			
 			if (!f_exist(path)) {
-				VRbJS.debug("no so found\n");
+				VRbJS.debug("no so found: %s\n".printf(path));
 				return null;
 			}			
 			
-			name = GLib.Path.get_basename(name);
+			name = GLib.Path.get_basename(path);
 			
 			var split = name.split(".");
 			name = split[0];
+			
+			VRbJS.debug("FIND_SO: %s\n".printf(name));
 			
 			if ("so" in split) {
 				

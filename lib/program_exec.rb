@@ -118,8 +118,11 @@ OPTIONS = {
   w: "run in headless WebKit",
   c: "Transpile ruby source to JS",
   j: "Execute inline js",
-  s: "include stdlib",
-  "d TARGET" => "dump the bridge code of an extension TARGET"
+  "r LIB"    => "require LIB",
+  "d TARGET" => "dump the bridge code of an extension TARGET",
+  D: "Show debugging messages",
+  E: "Force exit after executing script with '-w'",
+  "U URL"    => "The url for the webview to open ie, '<http://|file:///>foo/bar.html' (valid with -w)"
 }
 
 
@@ -139,11 +142,19 @@ end;
 
 begin
   PROGRAM = Program.new()
-  opts = Getopt::Std.getopts("d:vhwcejs")
+  opts = Getopt::Std.getopts("d:vhwcejsr:EDU:")
 
   $0 = "(file)"
   
-  unless opts['v'] or opts['h'] or opts['d']
+  if opts['D']
+    VRbJS.set_debug(true)
+  end
+  
+  if !!opts['E'] and !opts['w']
+    puts "WARN: -E without -w is useless";
+  end
+  
+  unless opts['v'] or opts['h'] or opts['d'] or (opts['U'] and !opts['w'])
     if opts['c']
       if opts.length != 1
         raise "Too many options passed. -c takes 0 options"
@@ -176,8 +187,13 @@ begin
       end
       
       # puts "run(#{code}, #{!!opts['w']}, #{parser}, #{$0});"
-      
-      PROGRAM.run(code, !!opts['w'], parser, $0, opts['s']!=nil);
+      if !opts['r'].is_a?(Array)
+        if !!opts['r']
+          opts['r'] = [opts['r']]
+        end
+      end
+
+      PROGRAM.run(code, !!opts['w'], parser, !!opts['D'], !!opts['E'], $0, opts['r'], opts['U'] || "");
     end
   else
     if opts['v']

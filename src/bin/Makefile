@@ -2,11 +2,11 @@ define EXTRAS
 endef
 
 ifdef WEBKIT
-	EXTRAS += -D WEBKIT --vapidir=../../vapi/webkitgtk-3.0 --pkg webkitgtk-3.0
+	EXTRAS += -D WEBKIT --vapidir=../../vapi/webkitgtk-3.0 --pkg webkitgtk-3.0 --pkg gtk+-3.0 --pkg libsoup-2.4
 endif
 
 all:
-	valac vrbjs.vala --vapidir=../../vapi/javascriptcore --pkg vrbjs-0.1 --pkg gee-1.0
+	valac vrbjs.vala --vapidir=../../vapi/javascriptcore --pkg vrbjs-0.1 --pkg gee-1.0 $(EXTRAS)
 
 clean:
 	rm -rf vrbjs

@@ -8,7 +8,10 @@ install:
 	cp -f libvrbjs-0.1.so /usr/lib/
 	cp -f vrbjs-0.1.vapi /usr/share/vala/vapi/
 	cp -f vrbjs-0.1.deps /usr/share/vala/vapi/
+	cp -f vrbjs-0.1.deps lib/vapi/
+	cp -f vrbjs-0.1.vapi lib/vapi/		
 	cp -f vrbjs.h /usr/include/
+	cp -f vrbjs.h lib/include/	
 	cp -f vrbjs-0.1.pc /usr/lib/pkgconfig/
 	mkdir -p /usr/lib/vrbjs/0.1.0
 	cp -rf lib/* /usr/lib/vrbjs/0.1.0/
