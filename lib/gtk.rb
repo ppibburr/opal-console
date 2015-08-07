@@ -17,6 +17,12 @@ module GObject
     FFI::Func.new(DL_LIB, :g_type_name, :string, [:pointer]).invoke(type)
   end
   
+  class self::Object
+    def signal_connect(name, &b)
+      GObject.signal_connect_data(self, name, &b)
+    end
+  end
+  
   class MainLoop
     def to_ptr
       @ptr
@@ -49,7 +55,7 @@ module Gtk
     end
   end
 
-  class Widget
+  class Widget < GObject::Object
     def to_ptr
       @ptr
     end

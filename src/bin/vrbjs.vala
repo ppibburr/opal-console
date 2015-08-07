@@ -46,7 +46,16 @@ namespace VRbJS {
 				});			
 
 				bind("run", (self, args, c, out e) => {
-					var code      = (string)args[0];
+					string code = "";
+					
+					if (value_type(args[0]) == ValueType.BOOLEAN) {
+						if (FileUtils.test((string)args[5], FileTest.EXISTS)) {
+							FileUtils.get_contents((string)args[5], out code, null);
+						}
+					} else {
+						code      = (string)args[0];
+					}
+					
 					var parser    = (bool)args[2];
 					var headless  = (bool)args[1];
 					var debug     = (bool)args[3];
@@ -119,30 +128,10 @@ namespace VRbJS {
 			}			    
 		}
 		
-		public const string WRAPPER = """
-(function(Opal) {
-  Opal.dynamic_require_severity = "error";
-  var self = Opal.top, $scope = Opal, nil = Opal.nil, $breaker = Opal.breaker, $slice = Opal.slice;
-
-  Opal.defs(self, '$read', function(path) {
-    var self = this;
-
-    return read(path);
-  });
-  return (Opal.defs(self, '$write', function(path, contents) {
-    var self = this;
-
-    return write(path, contents);
-  }), nil) && 'write';
-})(Opal);
-""";		
-		
-		public const string PROGRAM = """
-!function($){function e($,e){return"number"==typeof $&&"number"==typeof e?$+e:$["$+"](e)}$.dynamic_require_severity="error";var t,s,n,r=$.top,i=$,o=$.nil,a=($.breaker,$.slice,$.module),l=$.klass,u=$.hash2,p=$.gvars,c=$.range,g=o,h=o,f=o,d=o,b=o;null==p[0]&&(p[0]=o),$.add_stubs(["$split","$!","$empty?","$=~","$first","$index","$raise","$==","$[]","$shift","$nil?","$map","$include?","$<<","$has_key?","$[]=","$flatten","$puts","$print","$ljust","$getopts","$usage","$length","$read","$last","$write","$each"]),function(t){{var s=a(t,"Getopt");s.$$proto,s.$$scope}!function(t,s){function n(){}var r=n=l(t,s,"Std",n),i=(r.$$proto,r.$$scope);return function($,e){function t(){}{var s=t=l($,e,"Error",t);s.$$proto,s.$$scope}return o}(r,i.get("StandardError")),$.cdecl(i,"VERSION","1.4.2"),$.defs(r,"$getopts",function($){var t,s,n,r,a=this,l=o,g=o,h=o,f=o,d=o,b=o,_=o;for(l=$.$split(/ */),g=u([],{});s=i.get("ARGV")["$empty?"]()["$!"](),(t=s!==!1&&s!==o?i.get("ARGV").$first()["$=~"](/^-(.)(.*)/):s)!==o&&(!t.$$is_boolean||1==t);)t=[(s=p["~"])===o?o:s["$[]"](1),(s=p["~"])===o?o:s["$[]"](2)],h=t[0],f=t[1],d=$.$index(h),d!==!1&&d!==o||a.$raise(i.get("Error"),"invalid option '"+h+"'"),l["$[]"](e(d,1))["$=="](":")?(i.get("ARGV").$shift(),(t=f["$empty?"]())===o||t.$$is_boolean&&1!=t?(t=(r=l["$include?"](f))!==!1&&r!==o?r:l["$include?"](f["$[]"](c(1,-1,!1))))===o||t.$$is_boolean&&1!=t||(_="cannot use switch '"+f+"' as argument ",_=e(_,"to another switch"),a.$raise(i.get("Error"),_)):(f=i.get("ARGV").$shift(),(t=(s=f["$nil?"]())!==!1&&s!==o?s:f["$empty?"]())===o||t.$$is_boolean&&1!=t||a.$raise(i.get("Error"),"missing argument for '-"+l["$[]"](d)+"'"),b=(t=(s=l).$map,t.$$p=(n=function($){n.$$s||this;return null==$&&($=o),"-"+$},n.$$s=a,n),t).call(s),(t=(r=b["$include?"](f))!==!1&&r!==o?r:b["$include?"](f["$[]"](c(1,-1,!1))))===o||t.$$is_boolean&&1!=t||(_="cannot use switch '"+f+"' as argument ",_["$<<"]("to another switch"),a.$raise(i.get("Error"),_)),(t=g["$has_key?"](h))===o||t.$$is_boolean&&1!=t?g["$[]="](h,f):g["$[]="](h,[g["$[]"](h),f].$flatten()))):(g["$[]="](h,!0),(t=f["$empty?"]())===o||t.$$is_boolean&&1!=t?i.get("ARGV")["$[]="](0,"-"+f):i.get("ARGV").$shift());return g}),o&&"getopts"}(s,null)}(r),i.get("ARGV").$shift(),$.cdecl(i,"VERSION","0.1.0"),$.cdecl(i,"OPTIONS",u(["e","v","h","w","c","j","s"],{e:"Execute inline ruby script",v:"Print version",h:"Print this message",w:"run in headless WebKit",c:"Transpile ruby source to JS",j:"Execute inline js",s:"include stdlib"})),$.Object.$$proto.$usage=function($){var t,s,n,r=this;return null==$&&($=""),r.$puts($),r.$puts("opala - A ruby source runner/transpiler via Opal in JavaScriptCore\n\n"),r.$puts("Usage:"),r.$puts("opala [OPTIONs] [PATH|CODE]\n\n"),r.$puts("OPTIONS:"),(t=(s=i.get("OPTIONS")).$map,t.$$p=(n=function($,t){var s=n.$$s||this;return null==$&&($=o),null==t&&(t=o),s.$print(e(("-"+$).$ljust(10),""+t+"\n"))},n.$$s=r,n),t).call(s)};try{return g=i.get("Getopt").$$scope.get("Std").$getopts("vhwcejs"),p[0]="(file)",(t=(s=g["$[]"]("v"))!==!1&&s!==o?s:g["$[]"]("h"))===o||t.$$is_boolean&&1!=t?(t=g["$[]"]("c"))===o||t.$$is_boolean&&1!=t?(p[0]="(file)",f=!0,(t=g["$[]"]("e"))===o||t.$$is_boolean&&1!=t?(t=g["$[]"]("j"))===o||t.$$is_boolean&&1!=t?(p[0]=i.get("ARGV").$shift(),d=r.$read(p[0]),(t=(s=i.get("ARGV")).$each,t.$$p=(n=function($){n.$$s||this;return null==$&&($=o),append_argv($)},n.$$s=r,n),t).call(s),(t=p[0].$split(".").$last()["$=="]("rb")["$!"]())===o||t.$$is_boolean&&1!=t||(f=!1)):(d=i.get("ARGV").$last(),f=!1):d=i.get("ARGV").$last(),run(d,g["$[]"]("w")["$!"]()["$!"](),f,p[0],g["$[]"]("s")["$=="](o)["$!"]())):((t=g.$length()["$=="](1)["$!"]())===o||t.$$is_boolean&&1!=t||r.$raise("Too many options passed. -c takes 0 options"),h=r.$read(i.get("ARGV").$last()),$.require("opal-parser"),r.$write(e(i.get("ARGV").$last(),".js"),$.compile(h))):((t=g["$[]"]("v"))===o||t.$$is_boolean&&1!=t||r.$puts(i.get("VERSION")),(t=g["$[]"]("h"))===o||t.$$is_boolean&&1!=t?o:r.$usage())}catch(_){return b=_,r.$usage(b)}}(Opal);
-"""; 	
-		
+		public static ProgramBinder binder;
+		public static VRbJSModule   vrbjs_module;
 		public Program(string[]? argv = null) {
-			var binder = new ProgramBinder();
+			binder = new ProgramBinder();
 			
 			base(true, argv);
 	
@@ -152,17 +141,18 @@ namespace VRbJS {
 			
 			init_console();
 	
-			var pt = new VRbJSPrototype();
-			pt.runtime = this;
+			vrbjs_module         = new VRbJSModule();
+			vrbjs_module.runtime = this;
 
-			pt.create_toplevel_module(context);
+			vrbjs_module.create_toplevel_module(context);
+
 
 			if (!require("vrbjs", false)) {
 				print("CRITICAL: missing vrbjs.rb[.js] file\n");
 			}	
 	
-			if (!require("native")) {
-				print("CRITICAL: missing native.rb[.js] file\n");
+			if (!require("vrbjs_native")) {
+				print("CRITICAL: missing vrbjs_native.rb[.js] file\n");
 			}	
 	
 			if (!require("program_lib")) {
@@ -171,7 +161,9 @@ namespace VRbJS {
 			
 			if (!require("program_exec")) {
 				print("CRITICAL: missing program_exec.rb[.js] file\n");
-			}							
+			}	
+			
+									
 		}
 		
 		public string[] rargv {get; private set; default = new string[0];}
@@ -186,13 +178,21 @@ namespace VRbJS {
 		}
 		
 		public string? dump(string what) {
+			if (what == "_core_") {
+              var code  = vrbjs_module.generate_bridge_code(context, null,null);	
+              code     += binder.prototype.generate_bridge_code(context, null,null);			
+			  
+			  return code;
+			}
+			
+			
 			var info = load_so(what);
 
             string code = "";
 
-			foreach (var binder in info.interfaces) {
-				VRbJS.debug("adding iface: %s".printf(Type.from_instance(binder).name()));
-				code += "\n"+binder.generate_bridge_code(context, null, null);
+			foreach (var i in info.interfaces) {
+				VRbJS.debug("adding iface: %s".printf(Type.from_instance(i).name()));
+				code += "\n"+i.generate_bridge_code(context, null, null);
 			}
 			
 			if (info.iface_name != null) {
@@ -230,6 +230,9 @@ namespace VRbJS {
 		public void execute_headless(string code, bool parser=false, bool debug = false, bool exit = false, GLib.Value?[]? require = null) {
 			unowned string[] argv = this.argv;
 			Gtk.init(ref argv);
+			
+			mainloop = new GLib.MainLoop(null,true);
+			
 			var webview = new WebKit.WebView();
 
 			WebKit.WebSettings settings = webview.get_settings();
@@ -253,20 +256,20 @@ namespace VRbJS {
 					execute(code, parser, false, debug, require, ctx);
 					
 					if (exit) {
-						Gtk.main_quit();
+						mainloop.quit();
 					}
 			});
 			
 			webview.open(@"file://$(Runtime.lib_dir)/html/default.html");
 
-			Gtk.main();	
+			mainloop.run();	
 		}			
 #endif
 	}
 
-	public class VRbJSPrototype : JSUtils.Binder {
+	public class VRbJSModule : JSUtils.Binder {
 	  public Runtime? runtime;
-	  public VRbJSPrototype() {
+	  public VRbJSModule() {
 		  base("VRbJS");
 
 		  type = BinderType.MODULE;
@@ -288,14 +291,29 @@ namespace VRbJS {
 			 return v;
 		  }, false, 1);
 		  
+		  bind("exit", (self,args,c, out e) => {
+			 int i = (int)(double)args[0];
+			 exit(i);
+			 return null;
+		  },false,1);		  
+		  
+#if WEBKIT
+		  bind("main_quit", () => {
+			 mainloop.quit(); 
+			 return null;
+		  });
+#endif
+		  
 		  close();
 	  }	
 	}	
 	
 	
 	public class Runner : Runtime {
-		public VRbJSPrototype pt;
-		
+		public VRbJSModule vrbjs_module;
+#if WEBKIT
+        public GLib.MainLoop mainloop;
+#endif
 		public Runner(owned bool parser, string[]? argv = null, bool console = false, bool debug = false, GLib.Value?[]? req_libs = null, JSUtils.Context? ctx = null) {          
 			base(parser, argv, ctx);
 			
@@ -303,14 +321,14 @@ namespace VRbJS {
 				VRbJS.debug_state = true;
 			}
 			
-			if (!require("native", false)) {
-				print("CRITICAL: missing native.rb[.js] file\n");
+			if (!require("vrbjs_native", false)) {
+				print("CRITICAL: missing vrbjs_native.rb[.js] file\n");
 			}
 			
-			this.pt = new VRbJSPrototype();
-			pt.runtime = this;
+			vrbjs_module         = new VRbJSModule();
+			vrbjs_module.runtime = this;
 
-			pt.create_toplevel_module(context);
+			vrbjs_module.create_toplevel_module(context);
 
 			if (!require("vrbjs", false)) {
 				print("CRITICAL: missing vrbjs.rb[.js] file\n");
@@ -330,6 +348,7 @@ namespace VRbJS {
 	}
 }
 
+GLib.MainLoop mainloop;
 
 void main(string[] argv) {
   //VRbJS.debug_state = true;sd

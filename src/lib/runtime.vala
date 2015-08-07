@@ -130,17 +130,23 @@ namespace VRbJS {
 									if (!f_exist(path)) {
 										path = @"$(lib_dir)/$(name)/$(name).rb.js";
 										if (!f_exist(path)) {
-											path = @"$(lib_dir)/$(name).rb";
+											path = @"$(lib_dir)/stdlib/$(name).rb.js";
 											if (!f_exist(path)) {
-												path = @"$(lib_dir)/$(name)/$(name).rb";
+												path = @"$(lib_dir)/$(name).rb";
 												if (!f_exist(path)) {
-													JSCore.Value? e;
-													var v = jval2gval(context, context.exec("""Opal.require("%s");""".printf(name)).native, out e);
-													
-													if (e != null) {
-														return false;
+													path = @"$(lib_dir)/$(name)/$(name).rb";
+													if (!f_exist(path)) {
+														path = @"$(lib_dir)/stdlib/$(name).rb";
+														if (!f_exist(path)) {
+															JSCore.Value? e;
+															var v = jval2gval(context, context.exec("""Opal.require("%s");""".printf(name)).native, out e);
+															
+															if (e != null) {
+																return false;
+															}
+															return (bool)v;
+														}
 													}
-													return (bool)v;
 												}
 											}																		
 										}							

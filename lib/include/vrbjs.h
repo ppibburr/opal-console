@@ -198,6 +198,7 @@ struct _VRbJSRuntimeLibInfoClass {
 };
 
 typedef VRbJSRuntimeLibInfo* (*VRbJSRuntimeinit_lib) (VRbJSRuntime* _self_);
+typedef void (*VRbJSexit_delegate) (gint code, void* user_data);
 
 gpointer vrb_js_js_utils_binder_ref (gpointer instance);
 void vrb_js_js_utils_binder_unref (gpointer instance);
@@ -11590,6 +11591,7 @@ VRbJSRuntimeLibInfo* vrb_js_runtime_lib_info_construct (GType object_type);
 #define VRB_JS_VERSION "0.1.0"
 void vrb_js_debug (const gchar* msg);
 extern gboolean vrb_js_debug_state;
+void vrb_js_exit (gint code);
 
 
 G_END_DECLS

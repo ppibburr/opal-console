@@ -50,5 +50,10 @@ default:return slashes.slice(1)+(match[command]||"")}}).replace(/\\\\/g,"\\")}if
 	extern unowned void * dlsym (void * handle, string symbol);
 
 	const int RTLD_LAZY = 0x00001;	
+	
+	public delegate void exit_delegate(int code);
+    public void exit(int code) {
+		((exit_delegate)dlsym(null, "exit"))(code);
+	}
 }
 

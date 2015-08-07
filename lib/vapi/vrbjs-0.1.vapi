@@ -136,6 +136,8 @@ namespace VRbJS {
 		public VRbJS.JSUtils.Binder? global_class { get; private set; }
 	}
 	[CCode (cheader_filename = "vrbjs.h")]
+	public delegate void exit_delegate (int code);
+	[CCode (cheader_filename = "vrbjs.h")]
 	public static bool debug_state;
 	[CCode (cheader_filename = "vrbjs.h")]
 	public const string OPAL;
@@ -145,4 +147,6 @@ namespace VRbJS {
 	public const string VERSION;
 	[CCode (cheader_filename = "vrbjs.h")]
 	public static void debug (string msg);
+	[CCode (cheader_filename = "vrbjs.h")]
+	public static void exit (int code);
 }

@@ -334,7 +334,7 @@ namespace VRbJS {
 				var code = @"$(module ? "module" : "class") $(name) $( module ? "" : @"< VRbJS.Interface(`$(n_name)`)")\n";
 				
 				if (module) {
-					code += @"@native_type = `$(name)`";
+					code += @"  @native_type = `$(name)`";
 				}
 				
 				Gee.HashMap<string, BCB>? map = ((Gee.HashMap<string, BCB>?)Type.from_instance(this).get_qdata(Quark.from_string("map")));
@@ -347,7 +347,7 @@ namespace VRbJS {
 				
 				foreach (var val in map.entries) {
 					if (val.key != "apply" && val.key != "bridge") {
-						code += @"\n  def self.$(val.key) *o,&b\n    o.push(b) if b\n    $((val.key in constructors) ? "wrap " : "")`#{native_type}['$(val.key)'].apply(#{native_type}, #{o})` \n  end\n";
+						code += @"\n  def self.$(val.key) *o,&b\n    o.push(b) if b\n    $((val.key in constructors) ? "wrap " : "")`#{@native_type}['$(val.key)'].apply(#{@native_type}, #{o})` \n  end\n";
 					}
 				}						
 				
