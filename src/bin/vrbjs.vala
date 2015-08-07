@@ -63,15 +63,19 @@ namespace VRbJS {
 					var path      = (string)args[5];
 					var require   = jsary2vary(c, (JSCore.Object)args[6]);
 					
-					//VRbJS.debug(parser ? "PARSER!\n" : "NO_PARSE\n");
-					
 					program.set_file(path);
 					
 					if (headless) {
 #if WEBKIT
-						program.execute_headless(code, parser, debug, exit, require);
+					    var uri = "file://"+Runtime.lib_dir+"/html/default.html";
+					    
+					    if (value_type(args[7]) == ValueType.STRING) {
+							uri = (string)args[7];
+						}
+					    VRbJS.debug("RUN: headless - uri = %s".printf(uri));
+						program.execute_headless(code, parser, debug, exit, require, uri);
 #else
-						print("Error: opala not compiled with '-D WEBKIT'\n");
+						stderr.printf("Error: vrbjs not compiled with '-D WEBKIT'\n");
 #endif
 					} else {
 						program.execute(code, parser, true, debug, require);
@@ -155,6 +159,10 @@ namespace VRbJS {
 				print("CRITICAL: missing vrbjs_native.rb[.js] file\n");
 			}	
 	
+			require("stdio");
+			require("stdio/stderr");
+			require("stdio/stdout");	
+	
 			if (!require("program_lib")) {
 				print("CRITICAL: missing program_lib.rb[.js] file\n");
 			}
@@ -162,8 +170,7 @@ namespace VRbJS {
 			if (!require("program_exec")) {
 				print("CRITICAL: missing program_exec.rb[.js] file\n");
 			}	
-			
-									
+											
 		}
 		
 		public string[] rargv {get; private set; default = new string[0];}
@@ -216,6 +223,7 @@ namespace VRbJS {
 		public void execute(string code, bool parser=false, bool console = false, bool debug = false, GLib.Value?[]? require = null, JSUtils.Context? ctx = null) {
 			 var opal = new Runner(parser, this.rargv, console, debug, require, ctx);
 			 
+			 
 			 if (parser) {
 			   // Expect 'code' as Ruby
 			   opal.exec(code);
@@ -227,13 +235,13 @@ namespace VRbJS {
 		}
 			
 #if WEBKIT
-		public void execute_headless(string code, bool parser=false, bool debug = false, bool exit = false, GLib.Value?[]? require = null) {
+		public void execute_headless(string code, bool parser=false, bool debug = false, bool exit = false, GLib.Value?[]? require = null, string uri) {
 			unowned string[] argv = this.argv;
 			Gtk.init(ref argv);
 			
 			mainloop = new GLib.MainLoop(null,true);
 			
-			var webview = new WebKit.WebView();
+			webview = new WebKit.WebView();
 
 			WebKit.WebSettings settings = webview.get_settings();
 
@@ -260,7 +268,12 @@ namespace VRbJS {
 					}
 			});
 			
-			webview.open(@"file://$(Runtime.lib_dir)/html/default.html");
+			webview.console_message.connect((msg)=>{
+				print(msg);
+				return true;
+			});
+			
+			webview.open(uri);
 
 			mainloop.run();	
 		}			
@@ -302,6 +315,20 @@ namespace VRbJS {
 			 mainloop.quit(); 
 			 return null;
 		  });
+		  
+		  bind("on_ready", (self, args, c, out e) => {
+			 self.protect(c);
+	 		 unowned JSCore.Object cb = get_cb(c, args);
+			 cb.protect(c);			 
+			 webview.notify["load-status"].connect(()=>{
+				if (webview.get_load_status() == 2) {
+					var a = new GLib.Value?[0];
+					call(c, self, cb, a);
+				}
+			 }); 
+			 
+			 return null;			 
+		  });
 #endif
 		  
 		  close();
@@ -338,6 +365,16 @@ namespace VRbJS {
 				init_console();
 			}
 			
+			if (!require("stdio")) {
+				stderr.printf("WARN: no stdio.so");
+			}
+			require("stdio/stderr");
+			require("stdio/stdout");
+			
+			if (!require("file")) {
+				stderr.printf("WARN: no file.so");
+			}
+			
 			if (req_libs != null) {
 				foreach (var r in req_libs) {
 					VRbJS.debug("REQUIRE: %s\n".printf((string)r));
@@ -349,6 +386,10 @@ namespace VRbJS {
 }
 
 GLib.MainLoop mainloop;
+
+#if WEBKIT
+WebKit.WebView webview;
+#endif
 
 void main(string[] argv) {
   //VRbJS.debug_state = true;sd

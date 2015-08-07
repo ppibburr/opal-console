@@ -34,7 +34,7 @@ default:return slashes.slice(1)+(match[command]||"")}}).replace(/\\\\/g,"\\")}if
 	
 	public static void debug(string msg) {
 		if (debug_state) {
-			print("%s\n", msg);
+			stderr.printf("%s\n", msg);
 		}
 	}
 	

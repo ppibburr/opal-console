@@ -3,8 +3,9 @@ VRBJS_LIB_DIR ?= /usr/lib/vrbjs/0.1.0
 all:
 	valac file.vala --pkg vrbjs-0.1 --vapidir=../../../../vapi/javascriptcore -H file.h --library=File -X -shared -X -fPIC -o file.so --pkg gee-1.0 --pkg gio-2.0
 	vrbjs -d ./file.so > ./file.rb
-	echo "\n\nclass VRbJS::File\n  def self.open(path, mode=\"r\")\n    self.new(path)\n  end\n\nend" >> file.rb
+	echo "\n\nVRbJS.require(\"file/file\")\n\nmodule VRbJS; class self::File\n  def self.open(path, mode=\"r\")\n    self.new(path)\n  end\n\nend;end\n" >> file.rb
 	vrbjs -c ./file.rb
+	vrbjs -c ./lib/file/file.rb	
 
 clean:
 	rm ./file.rb
@@ -12,17 +13,20 @@ clean:
 	rm ./file.so
 	rm ./File.vapi
 	rm ./file.h
+	rm ./lib/file/*.rb.js
 
 install:
 	cp ./file.so $(VRBJS_LIB_DIR)/
 	cp ./file.rb $(VRBJS_LIB_DIR)/
 	cp ./file.rb.js $(VRBJS_LIB_DIR)/	
+	cp -rf ./lib/file/ $(VRBJS_LIB_DIR)/	
 	cp File.vapi $(VRBJS_LIB_DIR)/vapi/
 	cp file.h $(VRBJS_LIB_DIR)/include/
 
 uninstall:
 	rm $(VRBJS_LIB_DIR)/file.so
 	rm $(VRBJS_LIB_DIR)/file.rb
+	rm -rf $(VRBJS_LIB_DIR)/file	
 	rm $(VRBJS_LIB_DIR)/file.rb.js	
 	rm $(VRBJS_LIB_DIR)/vapi/File.vapi
 	rm $(VRBJS_LIB_DIR)/include/file.h

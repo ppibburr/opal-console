@@ -78,9 +78,9 @@ namespace VRbJS {
 					
 					callAsFunction = (c, fun, self, a, out e) => {
 						//print("Hahaha\n");
-						var static_binder = (string?)((JSUtils.Object)self).get_prop(c, "static_binder");
-						var tname         = (string?)((JSUtils.Object)fun).get_prop(c, "name");
-						var binder        = (string?)((JSUtils.Object)self).get_prop(c, "binder");
+						var static_binder = v2str(((JSUtils.Object)self).get_prop(c, "static_binder"));
+						var tname         = v2str(((JSUtils.Object)fun).get_prop(c, "name"));
+						var binder        = v2str(((JSUtils.Object)self).get_prop(c, "binder"));
 						//print("EOHahaha\n");
 								
 						var args = new GLib.Value?[0];
@@ -134,8 +134,13 @@ namespace VRbJS {
 				((Gee.HashMap<string, BCB>)Type.from_instance(this).get_qdata(Quark.from_string("map")))[n] = bcb;
 			}
 			
-			public static BCB get_binding(string binder, string name) {
-				return ((Gee.HashMap<string, BCB>)Type.from_name(binder).get_qdata(Quark.from_string("map")))[name];
+			public static BCB? get_binding(string binder, string name) {
+				var type = Type.from_name(binder);
+				if (type == Type.INVALID) {
+					return null;
+				}
+				var bcb = ((Gee.HashMap<string, BCB>)type.get_qdata(Quark.from_string("map")));
+				return bcb[name];
 			}
 		   
 			public static void ensure_init(Binder target) {

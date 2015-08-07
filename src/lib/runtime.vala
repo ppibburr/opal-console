@@ -45,9 +45,9 @@ namespace VRbJS {
 
 				bind("log", (self, args, c, out e) => {
 					if (value_type(args[0]) != ValueType.OBJECT) {
-						print("%s\n", v2str(args[0]));
+						print("%s", v2str(args[0]));
 					} else {
-						print("%s\n", object_to_string(c, (JSCore.Object)args[0]));
+						print("%s", object_to_string(c, (JSCore.Object)args[0]));
 					}
 					
 					return null;
@@ -220,10 +220,13 @@ namespace VRbJS {
 		public delegate LibInfo? init_lib(VRbJS.Runtime self);
 	    public static string? lib_dir;
 	    static construct {
-			lib_dir = GLib.Environment.get_variable("VRBJS_LIB_DIR") ?? @"/usr/lib/vrbjs/$(VRbJS.VERSION)";			
+			lib_dir = GLib.Environment.get_variable("VRBJS_LIB_DIR") ?? @"/usr/lib/vrbjs/$(VRbJS.VERSION)";	
+			so_map  = new Gee.HashMap<string, LibInfo?>();		
 		}	
 		
-		public LibInfo? load_so(owned string name) {
+		private static Gee.HashMap<string, LibInfo?> so_map;
+		
+		public LibInfo? load_so(owned string name) {			
 			string path = name;
 			
 			if (!f_exist(path)) {
@@ -270,6 +273,14 @@ namespace VRbJS {
 				return null;
 			}
 			
+			if (name in so_map) {
+				var fun    = (init_lib)dlsym(so_map[name].handle, @"$(name)_init");
+				
+				var binders = fun(this);				
+				
+				return so_map[name];
+			}			
+			
 			VRbJS.debug(@"so: $name - $path");
 			var handle = dlopen(path, RTLD_LAZY);
 			var fun    = (init_lib)dlsym(handle, @"$(name)_init");
@@ -277,6 +288,8 @@ namespace VRbJS {
 			var binders = fun(this);
             
             VRbJS.debug(@"so $path init-ed");
+            binders.handle = handle;
+            so_map[name] = binders;
             
 			return binders;
 		}	
@@ -289,6 +302,7 @@ namespace VRbJS {
 			public Binder?[] interfaces;
 			public string? iface_name = null;
 			public string? parent_iface = null;
+			public void* handle;
 		}
 	
 	}

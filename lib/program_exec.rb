@@ -5,12 +5,12 @@ ARGV.shift;
 VERSION = "0.1.0"
 
 OPTIONS = {
-  e: "Execute inline ruby script",
+  e: "Execute inline ruby script: requires CODE",
   v: "Print version",
   h: "Print this message",
   w: "run in headless WebKit",
-  c: "Transpile ruby source to JS",
-  j: "Execute inline js",
+  c: "Transpile ruby source to JS: requires PATH",
+  j: "Execute inline js: requires CODE",
   "r LIB"    => "require LIB",
   "d TARGET" => "dump the bridge code of an extension TARGET",
   D: "Show debugging messages",
@@ -22,10 +22,10 @@ OPTIONS = {
 def usage(msg="");
   puts msg
 
-  puts "opala - A ruby source runner/transpiler via VRbJS in JavaScriptCore\n\n"
+  puts "vrbjs - A ruby source runner/transpiler via VRbJS in JavaScriptCore\n\n"
   
   puts "Usage:"
-  puts "opala [OPTIONs] [PATH|CODE]\n\n"
+  puts "vrbjs [OPTIONs] [PATH|CODE]\n\n"
   
   puts "OPTIONS:"
   OPTIONS.map do |k, v|
@@ -44,8 +44,14 @@ begin
   end
   
   if !!opts['E'] and !opts['w']
-    puts "WARN: -E without -w is useless";
+    $stderr.puts "OptionsError: -E without -w is useless";
+    VRbJS.exit(1)
   end
+  
+  if !!opts['U'] and !opts['w']
+    $stderr.puts "OptionsError: -U without -w is useless";
+    VRbJS.exit(1)
+  end  
   
   unless opts['v'] or opts['h'] or opts['d'] or (opts['U'] and !opts['w'])
     if opts['c']
@@ -58,7 +64,7 @@ begin
       `Opal.require('opal-parser');`
      
       PROGRAM.write(ARGV.last+".js", `Opal.compile(#{source})`)
-    else
+    elsif !ARGV.empty?
       $0 = "(file)"
       parser = true
       if opts['e']
@@ -89,8 +95,10 @@ begin
         end
       end
 
-      PROGRAM.run(code, !!opts['w'], parser, !!opts['D'], !!opts['E'], $0, opts['r'], opts['U'] || "");
-    end
+      PROGRAM.run(code, !!opts['w'], parser, !!opts['D'], !!opts['E'], $0, opts['r'], opts['U'] || false);
+    else
+      usage("Requires at least one argument");
+    end   
   else
     if opts['v']
       puts VERSION
