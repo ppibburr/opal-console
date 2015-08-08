@@ -72,21 +72,6 @@ public class StdinKlass : JSUtils.Binder {
 			    return v;
 			}, false, 0);
 			
-			bind("gets",()=>{
-          var input = new StringBuilder ();
-          var buffer = new char[1024];
-          
-          while (!stdin.eof ()) {
-              string read_chunk = stdin.gets (buffer);
-              if (read_chunk != null) {
-                  input.append (read_chunk);
-              }
-          }
-          
-          GLib.Value? v = input.str;
-          return v;
-			});
-			
 			close();
 		}
 	}		
