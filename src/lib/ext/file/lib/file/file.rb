@@ -29,7 +29,7 @@ class File < IO
 
   def self.directory? path
     return nil unless exist? path
-    `!!__fs__.lstatSync(path).isDirectory()`
+    @delg.is_directory path
   end
 
   def self.file? path

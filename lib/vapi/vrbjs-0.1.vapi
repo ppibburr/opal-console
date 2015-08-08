@@ -106,6 +106,8 @@ namespace VRbJS {
 		public static string v2str (GLib.Value? val);
 		[CCode (cheader_filename = "vrbjs.h")]
 		public static VRbJS.JSUtils.ValueType value_type (GLib.Value? val);
+		[CCode (cheader_filename = "vrbjs.h")]
+		public static void*[] vary2jary (JSCore.Context c, GLib.Value?[] args);
 	}
 	[CCode (cheader_filename = "vrbjs.h")]
 	public class Runtime {

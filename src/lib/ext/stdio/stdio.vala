@@ -62,7 +62,7 @@ public class StdinKlass : JSUtils.Binder {
 		public Stdin() {
 			base("Stdin", new StdinKlass());
 	
-			bind("getc", (self,args,c out e)=>{
+			bind("getc", (self,args,c, out e)=>{
 			    GLib.Value? v = (int)stdin.getc();
 			    return v;
 			},false, 0);
@@ -72,28 +72,13 @@ public class StdinKlass : JSUtils.Binder {
 			    return v;
 			}, false, 0);
 			
-			bind("gets",()=>{
-          var input = new StringBuilder ();
-          var buffer = new char[1024];
-          
-          while (!stdin.eof ()) {
-              string read_chunk = stdin.gets (buffer);
-              if (read_chunk != null) {
-                  input.append (read_chunk);
-              }
-          }
-          
-          GLib.Value? v = input.str;
-          return v;
-			});
-			
 			close();
 		}
 	}		
 
 	public static Runtime.LibInfo? init(Runtime r) {
 		Runtime.LibInfo? info = new Runtime.LibInfo();
-		info.interfaces       = {new Stderr().prototype, new Stdout().prototype};
+		info.interfaces       = {new Stdin().prototype, new Stderr().prototype, new Stdout().prototype};
 		
 		foreach (var i in info.interfaces) {
 			r.add_toplevel_class(i.target);

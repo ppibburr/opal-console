@@ -94,6 +94,27 @@ namespace File {
 				return v;
 			});
 			
+			ValueType?[] e_types = {ValueType.STRING};
+			bind("exist",(self, args, c, out e)=>{
+			  var path = (string)args[0];
+			  GLib.Value? v = FileUtils.test(path, FileTest.EXISTS);
+			  return v;
+			}, false, 1, e_types);
+			
+			ValueType?[] id_types = {ValueType.STRING};
+			bind("is_directory",(self, args, c, out e)=>{
+			  var path = (string)args[0];
+			  GLib.Value? v = FileUtils.test(path, FileTest.IS_DIR);
+			  return v;
+			}, false, 1, id_types);			
+			
+			ValueType?[] if_types = {ValueType.STRING};
+			bind("is_file",(self, args, c, out e)=>{
+			  var path = (string)args[0];
+			  GLib.Value? v = !FileUtils.test(path, FileTest.IS_DIR);
+			  return v;
+			}, false, 1, if_types);				
+			
 			bind("apply", (instance, args, c, out e) => {
 				GLib.Value?[] a = jsary2vary(c, (JSCore.Object)args[1]); 
 				return JFile.init_object(null, a, c, out e);

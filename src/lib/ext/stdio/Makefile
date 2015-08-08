@@ -5,7 +5,8 @@ all:
 	vrbjs -d ./lib/stdio.so > ./lib/stdio.rb
 	vrbjs -c ./lib/stdio.rb
 	vrbjs -c ./lib/stdio/stdout.rb
-	vrbjs -c ./lib/stdio/stderr.rb				
+	vrbjs -c ./lib/stdio/stderr.rb			
+	vrbjs -c ./lib/stdio/stdin.rb			
 
 clean:
 	rm ./lib/stdio.rb

@@ -132,8 +132,7 @@ public enum ValueType {
 				return j;
 			}
 			
-			public static GLib.Value? call(JSCore.Context c, JSCore.Object self, JSCore.Object fun, GLib.Value?[] args) {
-			
+			public static void*[] vary2jary(JSCore.Context c, GLib.Value?[] args) {
 				void*[] jargs = {};
 				int i = 0;
 				
@@ -141,6 +140,13 @@ public enum ValueType {
 					jargs += (void*)gval2jval(c, v);
 					i++;
 				}
+				
+				return jargs;			
+			}
+			
+			public static GLib.Value? call(JSCore.Context c, JSCore.Object self, JSCore.Object fun, GLib.Value?[] args) {
+			
+        var jargs = vary2jary(c, args);
 				
 				unowned JSCore.Value res = fun.call_as_function(c, self, (JSCore.Value[]?)jargs, null);
 

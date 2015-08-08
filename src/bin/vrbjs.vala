@@ -162,6 +162,8 @@ namespace VRbJS {
 			require("stdio");
 			require("stdio/stderr");
 			require("stdio/stdout");	
+			require("stdio/stdin");
+
 	
 			if (!require("program_lib")) {
 				print("CRITICAL: missing program_lib.rb[.js] file\n");
@@ -370,6 +372,7 @@ namespace VRbJS {
 			}
 			require("stdio/stderr");
 			require("stdio/stdout");
+			require("stdio/stdin");			
 			
 			if (!require("file")) {
 				stderr.printf("WARN: no file.so");

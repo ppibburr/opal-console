@@ -249,6 +249,7 @@ GValue** vrb_js_js_utils_jsary2vary (const struct OpaqueJSContext* c, struct Opa
 GValue* vrb_js_js_utils_jval2gval (const struct OpaqueJSContext* c, const struct OpaqueJSValue* arg, const struct OpaqueJSValue** e);
 const struct OpaqueJSValue* vrb_js_js_utils_gval2jval (const struct OpaqueJSContext* c, GValue* val);
 const struct OpaqueJSValue* vrb_js_js_utils_string_value (const struct OpaqueJSContext* c, const gchar* val);
+void** vrb_js_js_utils_vary2jary (const struct OpaqueJSContext* c, GValue** args, int args_length1, int* result_length1);
 GValue* vrb_js_js_utils_call (const struct OpaqueJSContext* c, struct OpaqueJSValue* _self_, struct OpaqueJSValue* fun, GValue** args, int args_length1);
 gchar* vrb_js_js_utils_v2str (GValue* val);
 gchar* vrb_js_js_utils_object_to_string (const struct OpaqueJSContext* c, struct OpaqueJSValue* obj);
