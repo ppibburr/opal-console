@@ -6,12 +6,27 @@
 
 #include <glib.h>
 #include <glib-object.h>
+#include <JavaScriptCore/JavaScript.h>
 #include <stdlib.h>
 #include <string.h>
-#include <JavaScriptCore/JavaScript.h>
 
 G_BEGIN_DECLS
 
+
+#define VRB_JS_JS_UTILS_TYPE_BOUND_FUNCTION (vrb_js_js_utils_bound_function_get_type ())
+#define VRB_JS_JS_UTILS_BOUND_FUNCTION(obj) (G_TYPE_CHECK_INSTANCE_CAST ((obj), VRB_JS_JS_UTILS_TYPE_BOUND_FUNCTION, VRbJSJSUtilsBoundFunction))
+#define VRB_JS_JS_UTILS_BOUND_FUNCTION_CLASS(klass) (G_TYPE_CHECK_CLASS_CAST ((klass), VRB_JS_JS_UTILS_TYPE_BOUND_FUNCTION, VRbJSJSUtilsBoundFunctionClass))
+#define VRB_JS_JS_UTILS_IS_BOUND_FUNCTION(obj) (G_TYPE_CHECK_INSTANCE_TYPE ((obj), VRB_JS_JS_UTILS_TYPE_BOUND_FUNCTION))
+#define VRB_JS_JS_UTILS_IS_BOUND_FUNCTION_CLASS(klass) (G_TYPE_CHECK_CLASS_TYPE ((klass), VRB_JS_JS_UTILS_TYPE_BOUND_FUNCTION))
+#define VRB_JS_JS_UTILS_BOUND_FUNCTION_GET_CLASS(obj) (G_TYPE_INSTANCE_GET_CLASS ((obj), VRB_JS_JS_UTILS_TYPE_BOUND_FUNCTION, VRbJSJSUtilsBoundFunctionClass))
+
+typedef struct _VRbJSJSUtilsBoundFunction VRbJSJSUtilsBoundFunction;
+typedef struct _VRbJSJSUtilsBoundFunctionClass VRbJSJSUtilsBoundFunctionClass;
+typedef struct _VRbJSJSUtilsBoundFunctionPrivate VRbJSJSUtilsBoundFunctionPrivate;
+
+#define VRB_JS_JS_UTILS_TYPE_VALUE_TYPE (vrb_js_js_utils_value_type_get_type ())
+
+#define VRB_JS_JS_UTILS_TYPE_BINDER_TYPE (vrb_js_js_utils_binder_type_get_type ())
 
 #define VRB_JS_JS_UTILS_TYPE_BINDER (vrb_js_js_utils_binder_get_type ())
 #define VRB_JS_JS_UTILS_BINDER(obj) (G_TYPE_CHECK_INSTANCE_CAST ((obj), VRB_JS_JS_UTILS_TYPE_BINDER, VRbJSJSUtilsBinder))
@@ -24,35 +39,9 @@ typedef struct _VRbJSJSUtilsBinder VRbJSJSUtilsBinder;
 typedef struct _VRbJSJSUtilsBinderClass VRbJSJSUtilsBinderClass;
 typedef struct _VRbJSJSUtilsBinderPrivate VRbJSJSUtilsBinderPrivate;
 
-#define VRB_JS_JS_UTILS_TYPE_VALUE_TYPE (vrb_js_js_utils_value_type_get_type ())
-
-#define VRB_JS_JS_UTILS_BINDER_TYPE_BINDER_TYPE (vrb_js_js_utils_binder_binder_type_get_type ())
-
-#define VRB_JS_JS_UTILS_BINDER_TYPE_BCB (vrb_js_js_utils_binder_bcb_get_type ())
-#define VRB_JS_JS_UTILS_BINDER_BCB(obj) (G_TYPE_CHECK_INSTANCE_CAST ((obj), VRB_JS_JS_UTILS_BINDER_TYPE_BCB, VRbJSJSUtilsBinderBCB))
-#define VRB_JS_JS_UTILS_BINDER_BCB_CLASS(klass) (G_TYPE_CHECK_CLASS_CAST ((klass), VRB_JS_JS_UTILS_BINDER_TYPE_BCB, VRbJSJSUtilsBinderBCBClass))
-#define VRB_JS_JS_UTILS_BINDER_IS_BCB(obj) (G_TYPE_CHECK_INSTANCE_TYPE ((obj), VRB_JS_JS_UTILS_BINDER_TYPE_BCB))
-#define VRB_JS_JS_UTILS_BINDER_IS_BCB_CLASS(klass) (G_TYPE_CHECK_CLASS_TYPE ((klass), VRB_JS_JS_UTILS_BINDER_TYPE_BCB))
-#define VRB_JS_JS_UTILS_BINDER_BCB_GET_CLASS(obj) (G_TYPE_INSTANCE_GET_CLASS ((obj), VRB_JS_JS_UTILS_BINDER_TYPE_BCB, VRbJSJSUtilsBinderBCBClass))
-
-typedef struct _VRbJSJSUtilsBinderBCB VRbJSJSUtilsBinderBCB;
-typedef struct _VRbJSJSUtilsBinderBCBClass VRbJSJSUtilsBinderBCBClass;
-typedef struct _VRbJSJSUtilsBinderBCBPrivate VRbJSJSUtilsBinderBCBPrivate;
-
 #define VRB_JS_JS_UTILS_TYPE_OBJECT_TYPE (vrb_js_js_utils_object_type_get_type ())
 typedef struct OpaqueJSValue VRbJSJSUtilsObject;
 typedef void VRbJSJSUtilsContext;
-
-#define VRB_JS_JS_UTILS_TYPE_VALUE (vrb_js_js_utils_value_get_type ())
-#define VRB_JS_JS_UTILS_VALUE(obj) (G_TYPE_CHECK_INSTANCE_CAST ((obj), VRB_JS_JS_UTILS_TYPE_VALUE, VRbJSJSUtilsValue))
-#define VRB_JS_JS_UTILS_VALUE_CLASS(klass) (G_TYPE_CHECK_CLASS_CAST ((klass), VRB_JS_JS_UTILS_TYPE_VALUE, VRbJSJSUtilsValueClass))
-#define VRB_JS_JS_UTILS_IS_VALUE(obj) (G_TYPE_CHECK_INSTANCE_TYPE ((obj), VRB_JS_JS_UTILS_TYPE_VALUE))
-#define VRB_JS_JS_UTILS_IS_VALUE_CLASS(klass) (G_TYPE_CHECK_CLASS_TYPE ((klass), VRB_JS_JS_UTILS_TYPE_VALUE))
-#define VRB_JS_JS_UTILS_VALUE_GET_CLASS(obj) (G_TYPE_INSTANCE_GET_CLASS ((obj), VRB_JS_JS_UTILS_TYPE_VALUE, VRbJSJSUtilsValueClass))
-
-typedef struct _VRbJSJSUtilsValue VRbJSJSUtilsValue;
-typedef struct _VRbJSJSUtilsValueClass VRbJSJSUtilsValueClass;
-typedef struct _VRbJSJSUtilsValuePrivate VRbJSJSUtilsValuePrivate;
 
 #define VRB_JS_TYPE_RUNTIME (vrb_js_runtime_get_type ())
 #define VRB_JS_RUNTIME(obj) (G_TYPE_CHECK_INSTANCE_CAST ((obj), VRB_JS_TYPE_RUNTIME, VRbJSRuntime))
@@ -87,7 +76,7 @@ typedef struct _VRbJSRuntimeConsoleClass VRbJSRuntimeConsoleClass;
 typedef struct _VRbJSRuntimeConsolePrivate VRbJSRuntimeConsolePrivate;
 typedef struct _VRbJSRuntimeLibInfoPrivate VRbJSRuntimeLibInfoPrivate;
 
-typedef GValue* (*VRbJSJSUtilsBinderb_cb) (struct OpaqueJSValue* _self_, GValue** args, int args_length1, const struct OpaqueJSContext* c, const struct OpaqueJSValue** e, void* user_data);
+typedef GValue* (*VRbJSJSUtilsBinderbound_function) (struct OpaqueJSValue* _self_, GValue** args, int args_length1, const struct OpaqueJSContext* c, const struct OpaqueJSValue** e, void* user_data);
 typedef enum  {
 	VRB_JS_JS_UTILS_VALUE_TYPE_NULL,
 	VRB_JS_JS_UTILS_VALUE_TYPE_OBJECT,
@@ -98,37 +87,11 @@ typedef enum  {
 	VRB_JS_JS_UTILS_VALUE_TYPE_BOOLEAN
 } VRbJSJSUtilsValueType;
 
-typedef enum  {
-	VRB_JS_JS_UTILS_BINDER_BINDER_TYPE_CLASS,
-	VRB_JS_JS_UTILS_BINDER_BINDER_TYPE_MODULE
-} VRbJSJSUtilsBinderBinderType;
-
-struct _VRbJSJSUtilsBinder {
+struct _VRbJSJSUtilsBoundFunction {
 	GTypeInstance parent_instance;
 	volatile int ref_count;
-	VRbJSJSUtilsBinderPrivate * priv;
-	JSClassDefinition definition;
-	void* js_class;
-	VRbJSJSUtilsBinder* prototype;
-	VRbJSJSUtilsBinder* target;
-	gchar* rb_name;
-	VRbJSJSUtilsBinderBinderType type;
-};
-
-struct _VRbJSJSUtilsBinderClass {
-	GTypeClass parent_class;
-	void (*finalize) (VRbJSJSUtilsBinder *self);
-	void (*bind) (VRbJSJSUtilsBinder* self, const gchar* name, VRbJSJSUtilsBinderb_cb cb, void* cb_target, gboolean constructor, gint n_args, VRbJSJSUtilsValueType** atypes, int atypes_length1, gchar** anames, int anames_length1);
-};
-
-typedef void (*VRbJSJSUtilsBinderi_cb) (const struct OpaqueJSContext* c, struct OpaqueJSValue* o, void* user_data);
-typedef void (*VRbJSJSUtilsBinderf_cb) (struct OpaqueJSValue* o, void* user_data);
-typedef void (*VRbJSJSUtilsBinderc_cb) (struct OpaqueJSValue* instance, GValue** args, int args_length1, const struct OpaqueJSContext* c, const struct OpaqueJSValue** err, void* user_data);
-struct _VRbJSJSUtilsBinderBCB {
-	GTypeInstance parent_instance;
-	volatile int ref_count;
-	VRbJSJSUtilsBinderBCBPrivate * priv;
-	VRbJSJSUtilsBinderb_cb func;
+	VRbJSJSUtilsBoundFunctionPrivate * priv;
+	VRbJSJSUtilsBinderbound_function func;
 	gpointer func_target;
 	GDestroyNotify func_target_destroy_notify;
 	gchar* name;
@@ -139,11 +102,37 @@ struct _VRbJSJSUtilsBinderBCB {
 	gint anames_length1;
 };
 
-struct _VRbJSJSUtilsBinderBCBClass {
+struct _VRbJSJSUtilsBoundFunctionClass {
 	GTypeClass parent_class;
-	void (*finalize) (VRbJSJSUtilsBinderBCB *self);
+	void (*finalize) (VRbJSJSUtilsBoundFunction *self);
 };
 
+typedef enum  {
+	VRB_JS_JS_UTILS_BINDER_TYPE_CLASS,
+	VRB_JS_JS_UTILS_BINDER_TYPE_MODULE
+} VRbJSJSUtilsBinderType;
+
+struct _VRbJSJSUtilsBinder {
+	GTypeInstance parent_instance;
+	volatile int ref_count;
+	VRbJSJSUtilsBinderPrivate * priv;
+	VRbJSJSUtilsBinderType type;
+	JSClassDefinition definition;
+	void* js_class;
+	VRbJSJSUtilsBinder* prototype;
+	VRbJSJSUtilsBinder* target;
+	gchar* rb_name;
+};
+
+struct _VRbJSJSUtilsBinderClass {
+	GTypeClass parent_class;
+	void (*finalize) (VRbJSJSUtilsBinder *self);
+	void (*bind) (VRbJSJSUtilsBinder* self, const gchar* name, VRbJSJSUtilsBinderbound_function cb, void* cb_target, gboolean constructor, gint n_args, VRbJSJSUtilsValueType** atypes, int atypes_length1, gchar** anames, int anames_length1);
+};
+
+typedef void (*VRbJSJSUtilsBinderi_cb) (const struct OpaqueJSContext* c, struct OpaqueJSValue* o, void* user_data);
+typedef void (*VRbJSJSUtilsBinderf_cb) (struct OpaqueJSValue* o, void* user_data);
+typedef void (*VRbJSJSUtilsBinderc_cb) (struct OpaqueJSValue* instance, GValue** args, int args_length1, const struct OpaqueJSContext* c, const struct OpaqueJSValue** err, void* user_data);
 typedef enum  {
 	VRB_JS_JS_UTILS_OBJECT_TYPE_OBJECT,
 	VRB_JS_JS_UTILS_OBJECT_TYPE_FUNCTION,
@@ -151,17 +140,7 @@ typedef enum  {
 	VRB_JS_JS_UTILS_OBJECT_TYPE_ARRAY
 } VRbJSJSUtilsObjectType;
 
-struct _VRbJSJSUtilsValue {
-	GTypeInstance parent_instance;
-	volatile int ref_count;
-	VRbJSJSUtilsValuePrivate * priv;
-};
-
-struct _VRbJSJSUtilsValueClass {
-	GTypeClass parent_class;
-	void (*finalize) (VRbJSJSUtilsValue *self);
-};
-
+typedef void (*VRbJSJSUtilsContextinit_seed_sig) (gint argc, const gchar** argv, void* ctx);
 struct _VRbJSRuntime {
 	GTypeInstance parent_instance;
 	volatile int ref_count;
@@ -201,6 +180,17 @@ struct _VRbJSRuntimeLibInfoClass {
 typedef VRbJSRuntimeLibInfo* (*VRbJSRuntimeinit_lib) (VRbJSRuntime* _self_);
 typedef void (*VRbJSexit_delegate) (gint code, void* user_data);
 
+gpointer vrb_js_js_utils_bound_function_ref (gpointer instance);
+void vrb_js_js_utils_bound_function_unref (gpointer instance);
+GParamSpec* vrb_js_js_utils_param_spec_bound_function (const gchar* name, const gchar* nick, const gchar* blurb, GType object_type, GParamFlags flags);
+void vrb_js_js_utils_value_set_bound_function (GValue* value, gpointer v_object);
+void vrb_js_js_utils_value_take_bound_function (GValue* value, gpointer v_object);
+gpointer vrb_js_js_utils_value_get_bound_function (const GValue* value);
+GType vrb_js_js_utils_bound_function_get_type (void) G_GNUC_CONST;
+GType vrb_js_js_utils_value_type_get_type (void) G_GNUC_CONST;
+VRbJSJSUtilsBoundFunction* vrb_js_js_utils_bound_function_new (const gchar* n, gint n_args, VRbJSJSUtilsValueType** atypes, int atypes_length1, gchar** anames, int anames_length1, VRbJSJSUtilsBinderbound_function func, void* func_target);
+VRbJSJSUtilsBoundFunction* vrb_js_js_utils_bound_function_construct (GType object_type, const gchar* n, gint n_args, VRbJSJSUtilsValueType** atypes, int atypes_length1, gchar** anames, int anames_length1, VRbJSJSUtilsBinderbound_function func, void* func_target);
+GType vrb_js_js_utils_binder_type_get_type (void) G_GNUC_CONST;
 gpointer vrb_js_js_utils_binder_ref (gpointer instance);
 void vrb_js_js_utils_binder_unref (gpointer instance);
 GParamSpec* vrb_js_js_utils_param_spec_binder (const gchar* name, const gchar* nick, const gchar* blurb, GType object_type, GParamFlags flags);
@@ -208,75 +198,50 @@ void vrb_js_js_utils_value_set_binder (GValue* value, gpointer v_object);
 void vrb_js_js_utils_value_take_binder (GValue* value, gpointer v_object);
 gpointer vrb_js_js_utils_value_get_binder (const GValue* value);
 GType vrb_js_js_utils_binder_get_type (void) G_GNUC_CONST;
-GType vrb_js_js_utils_value_type_get_type (void) G_GNUC_CONST;
-GType vrb_js_js_utils_binder_binder_type_get_type (void) G_GNUC_CONST;
+void vrb_js_js_utils_binder_add_constructor (const gchar* name);
+VRbJSJSUtilsBoundFunction* vrb_js_js_utils_binder_get_binding (const gchar* binder, const gchar* name);
+void vrb_js_js_utils_binder_ensure_init (VRbJSJSUtilsBinder* target);
+struct OpaqueJSValue* vrb_js_js_utils_binder_get_cb (const struct OpaqueJSContext* c, GValue** args, int args_length1);
+gint* vrb_js_js_utils_binder_check_args (GValue** args, int args_length1, VRbJSJSUtilsValueType** types, int types_length1);
 VRbJSJSUtilsBinder* vrb_js_js_utils_binder_new (const gchar* class_name, VRbJSJSUtilsBinder* prototype);
 VRbJSJSUtilsBinder* vrb_js_js_utils_binder_construct (GType object_type, const gchar* class_name, VRbJSJSUtilsBinder* prototype);
 void vrb_js_js_utils_binder_close (VRbJSJSUtilsBinder* self);
-void vrb_js_js_utils_binder_add_constructor (const gchar* name);
-void vrb_js_js_utils_binder_bind (VRbJSJSUtilsBinder* self, const gchar* name, VRbJSJSUtilsBinderb_cb cb, void* cb_target, gboolean constructor, gint n_args, VRbJSJSUtilsValueType** atypes, int atypes_length1, gchar** anames, int anames_length1);
-void vrb_js_js_utils_binder_set_binding (VRbJSJSUtilsBinder* self, const gchar* n, gint n_args, VRbJSJSUtilsValueType** atypes, int atypes_length1, gchar** anames, int anames_length1, VRbJSJSUtilsBinderb_cb cb, void* cb_target);
-gpointer vrb_js_js_utils_binder_bcb_ref (gpointer instance);
-void vrb_js_js_utils_binder_bcb_unref (gpointer instance);
-GParamSpec* vrb_js_js_utils_binder_param_spec_bcb (const gchar* name, const gchar* nick, const gchar* blurb, GType object_type, GParamFlags flags);
-void vrb_js_js_utils_binder_value_set_bcb (GValue* value, gpointer v_object);
-void vrb_js_js_utils_binder_value_take_bcb (GValue* value, gpointer v_object);
-gpointer vrb_js_js_utils_binder_value_get_bcb (const GValue* value);
-GType vrb_js_js_utils_binder_bcb_get_type (void) G_GNUC_CONST;
-VRbJSJSUtilsBinderBCB* vrb_js_js_utils_binder_get_binding (const gchar* binder, const gchar* name);
-void vrb_js_js_utils_binder_ensure_init (VRbJSJSUtilsBinder* target);
-void vrb_js_js_utils_binder_raise (const struct OpaqueJSContext* ctx, const gchar* msg, const struct OpaqueJSValue** err);
+void vrb_js_js_utils_binder_bind (VRbJSJSUtilsBinder* self, const gchar* name, VRbJSJSUtilsBinderbound_function cb, void* cb_target, gboolean constructor, gint n_args, VRbJSJSUtilsValueType** atypes, int atypes_length1, gchar** anames, int anames_length1);
+void vrb_js_js_utils_binder_set_binding (VRbJSJSUtilsBinder* self, const gchar* n, gint n_args, VRbJSJSUtilsValueType** atypes, int atypes_length1, gchar** anames, int anames_length1, VRbJSJSUtilsBinderbound_function cb, void* cb_target);
 void vrb_js_js_utils_binder_initializer (VRbJSJSUtilsBinder* self, VRbJSJSUtilsBinderi_cb cb, void* cb_target);
 void vrb_js_js_utils_binder_finalizer (VRbJSJSUtilsBinder* self, VRbJSJSUtilsBinderf_cb cb, void* cb_target);
 void vrb_js_js_utils_binder_constructor (VRbJSJSUtilsBinder* self, VRbJSJSUtilsBinderc_cb cb, void* cb_target);
-struct OpaqueJSValue* vrb_js_js_utils_binder_set_constructor_on (VRbJSJSUtilsBinder* self, const struct OpaqueJSContext* c, struct OpaqueJSValue* t, VRbJSJSUtilsBinder* prototype_class);
+struct OpaqueJSValue* vrb_js_js_utils_binder_set_constructor_on (VRbJSJSUtilsBinder* self, const struct OpaqueJSContext* c, struct OpaqueJSValue* where, VRbJSJSUtilsBinder* prototype_class);
 struct OpaqueJSValue* vrb_js_js_utils_binder_create_toplevel_module (VRbJSJSUtilsBinder* self, const struct OpaqueJSContext* c);
 void vrb_js_js_utils_binder_set_as_prototype (VRbJSJSUtilsBinder* self, const struct OpaqueJSContext* c, struct OpaqueJSValue* obj);
 void vrb_js_js_utils_binder_init_global (VRbJSJSUtilsBinder* self, const struct OpaqueJSContext* c, VRbJSJSUtilsBinder* static_binder);
-struct OpaqueJSValue* vrb_js_js_utils_binder_get_cb (const struct OpaqueJSContext* c, GValue** args, int args_length1);
-gint* vrb_js_js_utils_binder_check_args (GValue** args, int args_length1, VRbJSJSUtilsValueType** types, int types_length1);
-void vrb_js_js_utils_binder_create_bridge (VRbJSJSUtilsBinder* self, VRbJSJSUtilsBinder* w, gchar* prefix);
+void vrb_js_js_utils_binder_create_bridge (VRbJSJSUtilsBinder* self, gchar* prefix);
 gchar* vrb_js_js_utils_binder_compile_bridge_code (VRbJSJSUtilsBinder* self, const struct OpaqueJSContext* c, VRbJSJSUtilsBinder* klass, const struct OpaqueJSValue** e);
 gchar* vrb_js_js_utils_binder_generate_bridge_code (VRbJSJSUtilsBinder* self, const struct OpaqueJSContext* c, VRbJSJSUtilsBinder* klass, const struct OpaqueJSValue** e);
-JSStaticFunction* vrb_js_js_utils_binder_get_static_functions (VRbJSJSUtilsBinder* self, int* result_length1);
 gchar** vrb_js_js_utils_binder_get_constructors (int* result_length1);
-VRbJSJSUtilsBinderBCB* vrb_js_js_utils_binder_bcb_new (const gchar* n, gint n_args, VRbJSJSUtilsValueType** atypes, int atypes_length1, gchar** anames, int anames_length1, VRbJSJSUtilsBinderb_cb func, void* func_target);
-VRbJSJSUtilsBinderBCB* vrb_js_js_utils_binder_bcb_construct (GType object_type, const gchar* n, gint n_args, VRbJSJSUtilsValueType** atypes, int atypes_length1, gchar** anames, int anames_length1, VRbJSJSUtilsBinderb_cb func, void* func_target);
+JSStaticFunction* vrb_js_js_utils_binder_get_static_functions (VRbJSJSUtilsBinder* self, int* result_length1);
+void vrb_js_js_utils_raise (const struct OpaqueJSContext* ctx, const gchar* msg, const struct OpaqueJSValue** err);
 GType vrb_js_js_utils_object_type_get_type (void) G_GNUC_CONST;
 VRbJSJSUtilsObjectType vrb_js_js_utils_object_type_from_object (const struct OpaqueJSContext* c, struct OpaqueJSValue* obj);
 VRbJSJSUtilsValueType vrb_js_js_utils_value_type (GValue* val);
 GValue** vrb_js_js_utils_jsary2vary (const struct OpaqueJSContext* c, struct OpaqueJSValue* obj, int* result_length1);
+gchar* vrb_js_js_utils_jval2string (const struct OpaqueJSContext* c, const struct OpaqueJSValue* v, const struct OpaqueJSValue** e);
 GValue* vrb_js_js_utils_jval2gval (const struct OpaqueJSContext* c, const struct OpaqueJSValue* arg, const struct OpaqueJSValue** e);
 const struct OpaqueJSValue* vrb_js_js_utils_gval2jval (const struct OpaqueJSContext* c, GValue* val);
-const struct OpaqueJSValue* vrb_js_js_utils_string_value (const struct OpaqueJSContext* c, const gchar* val);
 void** vrb_js_js_utils_vary2jary (const struct OpaqueJSContext* c, GValue** args, int args_length1, int* result_length1);
 GValue* vrb_js_js_utils_call (const struct OpaqueJSContext* c, struct OpaqueJSValue* _self_, struct OpaqueJSValue* fun, GValue** args, int args_length1);
-gchar* vrb_js_js_utils_v2str (GValue* val);
+gchar* vrb_js_js_utils_v2str (GValue* val, const struct OpaqueJSContext* c);
 gchar* vrb_js_js_utils_object_to_string (const struct OpaqueJSContext* c, struct OpaqueJSValue* obj);
-VRbJSJSUtilsObject* vrb_js_js_utils_object_new (VRbJSJSUtilsContext* c, void* klass, void* data);
-VRbJSJSUtilsObject* vrb_js_js_utils_object_new (VRbJSJSUtilsContext* c, void* klass, void* data);
+VRbJSJSUtilsObject* vrb_js_js_utils_object_new (const struct OpaqueJSContext* c, void* klass, void* data);
+VRbJSJSUtilsObject* vrb_js_js_utils_object_new (const struct OpaqueJSContext* c, void* klass, void* data);
 void vrb_js_js_utils_object_set_prop (VRbJSJSUtilsObject* self, const struct OpaqueJSContext* c, const gchar* name, GValue* v);
 GValue* vrb_js_js_utils_object_get_prop (VRbJSJSUtilsObject* self, const struct OpaqueJSContext* c, const gchar* name);
-gpointer vrb_js_js_utils_value_ref (gpointer instance);
-void vrb_js_js_utils_value_unref (gpointer instance);
-GParamSpec* vrb_js_js_utils_param_spec_value (const gchar* name, const gchar* nick, const gchar* blurb, GType object_type, GParamFlags flags);
-void vrb_js_js_utils_value_set_value (GValue* value, gpointer v_object);
-void vrb_js_js_utils_value_take_value (GValue* value, gpointer v_object);
-gpointer vrb_js_js_utils_value_get_value (const GValue* value);
-GType vrb_js_js_utils_value_get_type (void) G_GNUC_CONST;
-VRbJSJSUtilsValue* vrb_js_js_utils_value_new (const struct OpaqueJSContext* ctx, const struct OpaqueJSValue* native);
-VRbJSJSUtilsValue* vrb_js_js_utils_value_construct (GType object_type, const struct OpaqueJSContext* ctx, const struct OpaqueJSValue* native);
-void vrb_js_js_utils_value_string (const struct OpaqueJSContext* ctx, const gchar* str, const struct OpaqueJSValue** val);
-gchar* vrb_js_js_utils_value_to_string (VRbJSJSUtilsValue* self);
-struct OpaqueJSValue* vrb_js_js_utils_value_to_object (VRbJSJSUtilsValue* self);
-const struct OpaqueJSContext* vrb_js_js_utils_value_get_context (VRbJSJSUtilsValue* self);
-const struct OpaqueJSValue* vrb_js_js_utils_value_get_native (VRbJSJSUtilsValue* self);
+GValue* vrb_js_js_utils_object_to_gval (VRbJSJSUtilsObject* self);
 struct OpaqueJSValue* vrb_js_js_utils_context_global_object (VRbJSJSUtilsContext* self);
 VRbJSJSUtilsContext* vrb_js_js_utils_context_new (void* kls);
 VRbJSJSUtilsContext* vrb_js_js_utils_context_new (void* kls);
-VRbJSJSUtilsValue* vrb_js_js_utils_context_exec (VRbJSJSUtilsContext* self, const gchar* code);
-gchar* _vrb_js_js_utils_context_read_string (const struct OpaqueJSContext* ctx, const struct OpaqueJSValue* val);
-gchar* vrb_js_js_utils_context_read_string (VRbJSJSUtilsContext* self, const struct OpaqueJSValue* val);
+GValue* vrb_js_js_utils_context_exec (VRbJSJSUtilsContext* self, const gchar* code, struct OpaqueJSValue* _self_, const struct OpaqueJSValue** e);
+void vrb_js_js_utils_context_init_seed (VRbJSJSUtilsContext* self, gchar** argv, int argv_length1);
 gpointer vrb_js_runtime_ref (gpointer instance);
 void vrb_js_runtime_unref (gpointer instance);
 GParamSpec* vrb_js_param_spec_runtime (const gchar* name, const gchar* nick, const gchar* blurb, GType object_type, GParamFlags flags);
@@ -291,8 +256,8 @@ void vrb_js_runtime_init_console (VRbJSRuntime* self, VRbJSJSUtilsBinder* consol
 void vrb_js_runtime_init_opal (VRbJSRuntime* self, gboolean parser, gchar** argv, int argv_length1);
 void vrb_js_runtime_load_parser (VRbJSRuntime* self);
 gboolean vrb_js_runtime_require (VRbJSRuntime* self, const gchar* name, gboolean no_so);
-VRbJSJSUtilsValue* vrb_js_runtime_load (VRbJSRuntime* self, const gchar* path);
-VRbJSJSUtilsValue* vrb_js_runtime_exec (VRbJSRuntime* self, const gchar* code);
+GValue* vrb_js_runtime_load (VRbJSRuntime* self, const gchar* path);
+GValue* vrb_js_runtime_exec (VRbJSRuntime* self, const gchar* code, struct OpaqueJSValue* _self_, const struct OpaqueJSValue** e);
 VRbJSJSUtilsBinder* vrb_js_runtime_add_toplevel_class (VRbJSRuntime* self, VRbJSJSUtilsBinder* klass);
 gpointer vrb_js_runtime_lib_info_ref (gpointer instance);
 void vrb_js_runtime_lib_info_unref (gpointer instance);

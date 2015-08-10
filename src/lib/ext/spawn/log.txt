@@ -1,0 +1,12 @@
+.
+..
+1
+2
+Makefile
+Makefile~
+SPAWN.h
+SPAWN.vapi
+lib
+log.txt
+spawn.vala
+spawn.vala~

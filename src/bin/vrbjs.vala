@@ -164,6 +164,9 @@ namespace VRbJS {
 			require("stdio/stdout");	
 			require("stdio/stdin");
 
+			if (!require("env")) {
+				stderr.printf("WARN: no env.so");
+			}	
 	
 			if (!require("program_lib")) {
 				print("CRITICAL: missing program_lib.rb[.js] file\n");
@@ -225,15 +228,22 @@ namespace VRbJS {
 		public void execute(string code, bool parser=false, bool console = false, bool debug = false, GLib.Value?[]? require = null, JSUtils.Context? ctx = null) {
 			 var opal = new Runner(parser, this.rargv, console, debug, require, ctx);
 			 
+			 JSCore.Value e;
 			 
 			 if (parser) {
 			   // Expect 'code' as Ruby
-			   opal.exec(code);
-			   return;
+			   opal.exec(code, null, out e);
+			  
+			 } else {
+				 // Expects 'code' as JS
+				 opal.context.exec(code, null, out e);
 			 }
 			 
-			 // Expects 'code' as JS
-			 opal.context.exec(code);
+			 if (e != null) {
+				 var s = (string)((JSUtils.Object)e).get_prop(opal.context, "stack");
+				 print(jval2string(opal.context, e, null));			 				 
+				 stderr.puts("%s\n".printf(s));
+			 }			 
 		}
 			
 #if WEBKIT
@@ -377,6 +387,10 @@ namespace VRbJS {
 			if (!require("file")) {
 				stderr.printf("WARN: no file.so");
 			}
+			
+			if (!require("env")) {
+				stderr.printf("WARN: no env.so");
+			}			
 			
 			if (req_libs != null) {
 				foreach (var r in req_libs) {

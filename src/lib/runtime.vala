@@ -34,6 +34,8 @@ namespace VRbJS {
             
             //VRbJS.debug("RUNTIME: 001");
 
+			((JSUtils.Context)this.context).init_seed(argv);
+
 			init_opal(parser, argv);
 			
 			//VRbJS.debug("RUNTIME: 002");
@@ -53,6 +55,16 @@ namespace VRbJS {
 					return null;
 				});
 				
+				bind("warn", (self, args, c, out e) => {
+					if (value_type(args[0]) != ValueType.OBJECT) {
+						stderr.printf("%s", v2str(args[0]));
+					} else {
+						stderr.printf("%s", object_to_string(c, (JSCore.Object)args[0]));
+					}
+					
+					return null;
+				});				
+				
 				close();
 			}
 		}
@@ -64,16 +76,14 @@ namespace VRbJS {
 				  console_class = (Binder?)new Console();
 			  }
 			  
-			  var console = new JSCore.Object(this.context, console_class.js_class, null);
-			  var g       = context.get_global_object();
+			  var console = (JSUtils.Object)new JSCore.Object(this.context, console_class.js_class, null);
+			  var g       = (JSUtils.Object)context.get_global_object();
 			  
-			  g.set_property(this.context, new JSCore.String.with_utf8_c_string("console"), console, JSCore.PropertyAttribute.ReadOnly, null);
+			  g.set_prop(this.context, "console", console);
 			  
-			  var name = new JSCore.String.with_utf8_c_string("binder");
-			  JSCore.Value binder;
-			  JSUtils.Value.string(this.context, Type.from_instance(console_class).name(), out binder);
+			  GLib.Value? binder = Type.from_instance(console_class).name();
 			  
-			  console.set_property(this.context, name, binder, JSCore.PropertyAttribute.ReadOnly, null);
+			  console.set_prop(this.context, "binder", binder);
 			  
 		}		
 		
@@ -139,7 +149,7 @@ namespace VRbJS {
 														path = @"$(lib_dir)/stdlib/$(name).rb";
 														if (!f_exist(path)) {
 															JSCore.Value? e;
-															var v = jval2gval(context, context.exec("""Opal.require("%s");""".printf(name)).native, out e);
+															var v = context.exec("""Opal.require("%s");""".printf(name), null, out e);
 															
 															if (e != null) {
 																return false;
@@ -192,7 +202,7 @@ namespace VRbJS {
 		}
 		
 		// Loads a ruby file at +path+
-		public JSUtils.Value load(string path) {
+		public GLib.Value? load(string path) {
 			load_parser();
 			var code = "";
 			FileUtils.get_contents(path, out code, null);
@@ -200,12 +210,12 @@ namespace VRbJS {
 		}
 		
 		// Executes ruby source +code+
-		public JSUtils.Value exec(string code) {
+		public GLib.Value? exec(string code, JSCore.Object? self = null, out JSCore.Value e = null) {
 			//debug("RUNTIME_EXEC: 001");
 			
 			var s="""eval(Opal.compile("%s"));""".printf(code.escape(null));
 			
-			var result = context.exec(s);
+			var result = ((JSUtils.Context)context).exec(s, self, out e);
 
 			return result;
 		}
