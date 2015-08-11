@@ -1,9 +1,0 @@
-[submodule "vapi/javascriptcore"]
-	path = vapi/javascriptcore
-	url = git://github.com/ppibburr/javascriptcore-gtk.vapi.git
-[submodule "vapi/webkitgtk-3.0"]
-	path = vapi/webkitgtk-3.0
-	url = git://github.com/ppibburr/webkit-gtk.vapi.git
-[submodule "vapi/libffi"]
-	path = vapi/libffi
-	url = https://github.com/ppibburr/libffi.vapi
